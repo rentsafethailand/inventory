@@ -8855,9 +8855,9 @@
                         <label class="block text-sm font-medium mb-2">รายการที่เลือก (<span x-text="selectedCount"></span> รายการ)</label>
                         <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 max-h-32 overflow-y-auto text-sm">
                             <template x-for="dep in selectedDeposits" :key="dep.deposit_id">
-                                <div class="py-1 border-b border-gray-200 dark:border-gray-600 last:border-0">
-                                    <span class="font-mono" x-text="dep.deposit_code"></span> - <span x-text="dep.item_name"></span>
-                                    <span class="text-gray-500">(<span x-text="dep.quantity"></span> ขวด)</span>
+                                <div class="py-2 border-b border-gray-200 dark:border-gray-600 last:border-0">
+                                    <div><span class="font-mono text-blue-600" x-text="dep.deposit_code"></span> - <span x-text="dep.item_name"></span></div>
+                                    <div class="text-gray-500 text-xs mt-1">└─ คงเหลือ: <span x-text="dep.quantity"></span> ขวด</div>
                                 </div>
                             </template>
                         </div>
