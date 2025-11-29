@@ -1389,6 +1389,7 @@
                         Swal.fire('แจ้งเตือน', 'กรุณาเลือกรายการที่ต้องการโอน', 'warning');
                         return;
                     }
+                    this.createdBy = Alpine.store('app').user.username;
                     this.showTransferModal = true;
                 },
 
@@ -8864,8 +8865,8 @@
                     </div>
 
                     <div class="mb-4">
-                        <label class="block text-sm font-medium mb-2">ชื่อผู้นำส่ง <span class="text-red-500">*</span></label>
-                        <input type="text" x-model="createdBy" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600" placeholder="ระบุชื่อผู้นำส่ง...">
+                        <label class="block text-sm font-medium mb-2">ผู้นำส่ง</label>
+                        <input type="text" x-model="createdBy" readonly class="w-full px-3 py-2 border rounded-lg bg-gray-100 dark:bg-gray-600 dark:border-gray-600 cursor-not-allowed">
                     </div>
 
                     <div class="mb-4">
