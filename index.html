@@ -1304,6 +1304,10 @@
                     return this.selectedItems.length;
                 },
 
+                get selectedDeposits() {
+                    return this.expiredList.filter(item => this.selectedItems.includes(item.deposit_id));
+                },
+
                 formatDate(dateStr) {
                     if (!dateStr) return '-';
                     const d = new Date(dateStr);
