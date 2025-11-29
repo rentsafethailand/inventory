@@ -269,7 +269,7 @@ function handleDepositSystemAPI(eventData) {
           eventData.depositIds || data.depositIds,
           eventData.note || data.note,
           eventData.createdBy || data.createdBy || '',
-          eventData.photoUrl || data.photoUrl || ''
+          eventData.photo || data.photo || ''  // รับ base64 photo
         );
         break;
 
@@ -10428,7 +10428,7 @@ function getHQTransferSummary(hqStoreId) {
 /**
  * สร้างคำขอโอนจากสาขาไป HQ
  */
-function createTransferRequest(storeId, depositIds, note, createdBy, photoUrl) {
+function createTransferRequest(storeId, depositIds, note, createdBy, photoBase64) {
   try {
     if (!depositIds || depositIds.length === 0) {
       return { success: false, message: 'กรุณาเลือกรายการที่ต้องการโอน' };
@@ -10437,6 +10437,14 @@ function createTransferRequest(storeId, depositIds, note, createdBy, photoUrl) {
     const storeInfo = getStoreInfoById(storeId);
     if (!storeInfo) {
       return { success: false, message: 'Store not found' };
+    }
+
+    // Upload photo if provided
+    let photoUrl = '';
+    if (photoBase64) {
+      const timestamp = Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyyMMdd_HHmmss');
+      const fileName = `transfer_${timestamp}.jpg`;
+      photoUrl = uploadDepositPhoto(storeId, photoBase64, fileName);
     }
 
     const storeSS = SpreadsheetApp.openById(storeInfo.sheet_id);
