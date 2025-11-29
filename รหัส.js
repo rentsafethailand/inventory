@@ -10593,6 +10593,9 @@ function getPendingTransfersForHQ(hqStoreId) {
             // ดึงรายละเอียด deposits
             const depositDetails = getDepositDetailsForTransfer(branchSheetId, depositIds);
 
+            // คำนวณ total_quantity จาก depositDetails
+            const totalQty = depositDetails.reduce((sum, d) => sum + (d.quantity || 0), 0);
+
             pendingTransfers.push({
               transfer_id: String(tRow[transferIdCol] || ''),
               transfer_code: String(tRow[transferCodeCol] || ''),
@@ -10600,9 +10603,9 @@ function getPendingTransfersForHQ(hqStoreId) {
               from_store_name: String(branchName || ''),
               from_sheet_id: String(branchSheetId || ''),
               items_count: Number(tRow[totalItemsCol] || depositIds.length),
-              total_quantity: Number(tRow[totalQtyCol] || 0),
+              total_quantity: totalQty,
               transfer_date: transferDate instanceof Date
-                ? transferDate.toLocaleDateString('th-TH')
+                ? transferDate.toISOString()
                 : String(transferDate || ''),
               notes: String(tRow[notesCol] || ''),
               photo_url: String(tRow[photoUrlCol] || ''),
