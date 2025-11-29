@@ -239,6 +239,18 @@ function handleDepositSystemAPI(eventData) {
         result = getExpiredDeposits(eventData.storeId || data.storeId);
         break;
 
+      case 'getBranchTransferSummary':
+        result = getBranchTransferSummary(eventData.storeId || data.storeId);
+        break;
+
+      case 'getBranchPendingTransfers':
+        result = getTransferPendingDeposits(eventData.storeId || data.storeId);
+        break;
+
+      case 'getBranchConfirmedTransfers':
+        result = getTransferConfirmedDeposits(eventData.storeId || data.storeId);
+        break;
+
       case 'createTransferRequest':
         result = createTransferRequest(
           eventData.storeId || data.storeId,
@@ -9875,6 +9887,58 @@ function getExpiredDeposits(storeId) {
 
   } catch (error) {
     console.error('Error in getExpiredDeposits:', error);
+    return { success: false, message: error.toString() };
+  }
+}
+
+
+/**
+ * นับจำนวนรายการในแต่ละสถานะสำหรับ Branch
+ */
+function getBranchTransferSummary(storeId) {
+  try {
+    const storeInfo = getStoreInfoById(storeId);
+    if (!storeInfo) {
+      return { success: false, message: 'Store not found' };
+    }
+
+    const storeSS = SpreadsheetApp.openById(storeInfo.sheet_id);
+    const depositsSheet = storeSS.getSheetByName('Deposits');
+    if (!depositsSheet) {
+      return { success: true, data: { expired: 0, pending: 0, confirmed: 0 } };
+    }
+
+    const data = depositsSheet.getDataRange().getValues();
+    const headers = data[0];
+    const statusCol = headers.indexOf('status');
+    const expiryCol = headers.indexOf('expiry_date');
+
+    if (statusCol === -1) {
+      return { success: true, data: { expired: 0, pending: 0, confirmed: 0 } };
+    }
+
+    let expired = 0, pending = 0, confirmed = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = 1; i < data.length; i++) {
+      const status = data[i][statusCol];
+      const expiryDate = data[i][expiryCol];
+
+      if ((status === 'in_store' || status === 'expired') && expiryDate) {
+        const expDate = new Date(expiryDate);
+        expDate.setHours(0, 0, 0, 0);
+        if (expDate <= today) expired++;
+      } else if (status === 'transfer_pending') {
+        pending++;
+      } else if (status === 'transfer_confirmed') {
+        confirmed++;
+      }
+    }
+
+    return { success: true, data: { expired, pending, confirmed } };
+  } catch (error) {
+    console.error('Error in getBranchTransferSummary:', error);
     return { success: false, message: error.toString() };
   }
 }

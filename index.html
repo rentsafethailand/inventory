@@ -1307,7 +1307,10 @@
                 formatDate(dateStr) {
                     if (!dateStr) return '-';
                     const d = new Date(dateStr);
-                    return d.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit' });
+                    const day = d.getDate().toString().padStart(2, '0');
+                    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+                    const year = d.getFullYear() + 543;
+                    return day + '/' + month + '/' + year;
                 },
 
                 init() {
@@ -8767,7 +8770,7 @@
                                         <td x-show="activeTab === 'expired'" class="px-3 py-2 text-center">
                                             <input type="checkbox" :checked="isSelected(item.deposit_id)" @click="toggleSelect(item.deposit_id)" class="w-4 h-4">
                                         </td>
-                                        <td class="px-3 py-2 text-xs font-mono whitespace-nowrap" x-text="item.deposit_id"></td>
+                                        <td class="px-3 py-2 text-xs font-mono whitespace-nowrap" x-text="item.deposit_code"></td>
                                         <td class="px-3 py-2 whitespace-nowrap" x-text="item.customer_name"></td>
                                         <td class="px-3 py-2 whitespace-nowrap" x-text="item.item_name + ' x' + item.quantity"></td>
                                         <td class="px-3 py-2 whitespace-nowrap" x-text="formatDate(item.expiry_date)"></td>
