@@ -8848,16 +8848,34 @@
 
             <!-- Transfer Modal -->
             <div x-show="showTransferModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" x-cloak>
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
-                    <h3 class="text-xl font-bold mb-4">ยืนยันการส่งโอน</h3>
-                    <p class="mb-4 text-gray-600 dark:text-gray-400">คุณกำลังจะส่งโอน <span class="font-bold text-blue-600" x-text="selectedCount"></span> รายการไปยังคลังกลาง</p>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+                    <h3 class="text-xl font-bold mb-4"><i class="fas fa-paper-plane text-blue-500 mr-2"></i>นำส่งคลังกลาง</h3>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">รายการที่เลือก (<span x-text="selectedCount"></span> รายการ)</label>
+                        <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 max-h-32 overflow-y-auto text-sm">
+                            <template x-for="dep in selectedDeposits" :key="dep.deposit_id">
+                                <div class="py-1 border-b border-gray-200 dark:border-gray-600 last:border-0">
+                                    <span class="font-mono" x-text="dep.deposit_code"></span> - <span x-text="dep.item_name"></span>
+                                    <span class="text-gray-500">(<span x-text="dep.quantity"></span> ขวด)</span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">ชื่อผู้นำส่ง <span class="text-red-500">*</span></label>
+                        <input type="text" x-model="createdBy" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600" placeholder="ระบุชื่อผู้นำส่ง...">
+                    </div>
+
                     <div class="mb-4">
                         <label class="block text-sm font-medium mb-2">หมายเหตุ (ถ้ามี)</label>
-                        <textarea x-model="transferNote" rows="3" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600" placeholder="ระบุหมายเหตุ..."></textarea>
+                        <textarea x-model="transferNote" rows="2" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600" placeholder="ระบุหมายเหตุ..."></textarea>
                     </div>
+
                     <div class="flex space-x-3">
                         <button @click="closeTransferModal()" class="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">ยกเลิก</button>
-                        <button @click="submitTransfer()" :disabled="submitting" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                        <button @click="submitTransfer()" :disabled="submitting || !createdBy" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
                             <span x-show="!submitting">ยืนยันส่งโอน</span>
                             <span x-show="submitting"><i class="fas fa-spinner fa-spin"></i> กำลังส่ง...</span>
                         </button>
