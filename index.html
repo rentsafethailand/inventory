@@ -9052,22 +9052,22 @@
                         <i class="fas fa-clock text-3xl text-yellow-500"></i>
                     </div>
                 </div>
-                <div @click="switchTab('awaiting')" class="cursor-pointer bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-2 transition-all" :class="activeTab === 'awaiting' ? 'border-purple-500' : 'border-transparent hover:border-gray-300'">
+                <div @click="switchTab('awaiting')" class="cursor-pointer bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-2 transition-all" :class="activeTab === 'awaiting' ? 'border-blue-500' : 'border-transparent hover:border-gray-300'">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">รอถอน</p>
-                            <p class="text-2xl font-bold text-purple-600" x-text="summary.awaiting"></p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">อยู่ในคลัง</p>
+                            <p class="text-2xl font-bold text-blue-600" x-text="summary.awaiting"></p>
                         </div>
-                        <i class="fas fa-hand-holding text-3xl text-purple-500"></i>
+                        <i class="fas fa-warehouse text-3xl text-blue-500"></i>
                     </div>
                 </div>
                 <div @click="switchTab('confirmed')" class="cursor-pointer bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-2 transition-all" :class="activeTab === 'confirmed' ? 'border-green-500' : 'border-transparent hover:border-gray-300'">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">ถอนแล้ว</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">จำหน่ายออก</p>
                             <p class="text-2xl font-bold text-green-600" x-text="summary.confirmed"></p>
                         </div>
-                        <i class="fas fa-check-circle text-3xl text-green-500"></i>
+                        <i class="fas fa-sign-out-alt text-3xl text-green-500"></i>
                     </div>
                 </div>
             </div>
@@ -9077,11 +9077,11 @@
                 <button @click="switchTab('pending')" class="px-4 py-2 font-medium transition-colors" :class="activeTab === 'pending' ? 'text-yellow-600 border-b-2 border-yellow-600' : 'text-gray-500 hover:text-gray-700'">
                     <i class="fas fa-clock mr-2"></i>รอรับ
                 </button>
-                <button @click="switchTab('awaiting')" class="px-4 py-2 font-medium transition-colors" :class="activeTab === 'awaiting' ? 'text-purple-600 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'">
-                    <i class="fas fa-hand-holding mr-2"></i>รอถอน
+                <button @click="switchTab('awaiting')" class="px-4 py-2 font-medium transition-colors" :class="activeTab === 'awaiting' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'">
+                    <i class="fas fa-warehouse mr-2"></i>อยู่ในคลัง
                 </button>
                 <button @click="switchTab('confirmed')" class="px-4 py-2 font-medium transition-colors" :class="activeTab === 'confirmed' ? 'text-green-600 border-b-2 border-green-600' : 'text-gray-500 hover:text-gray-700'">
-                    <i class="fas fa-check-circle mr-2"></i>ถอนแล้ว
+                    <i class="fas fa-sign-out-alt mr-2"></i>จำหน่ายออก
                 </button>
             </div>
 
@@ -9095,7 +9095,7 @@
                 <template x-if="!loading && currentList.length === 0">
                     <div class="text-center py-8">
                         <i class="fas fa-inbox text-6xl text-gray-400 mb-4"></i>
-                        <h3 class="text-xl font-semibold mb-2" x-text="activeTab === 'pending' ? 'ไม่มีรายการรอรับ' : (activeTab === 'awaiting' ? 'ไม่มีรายการรอถอน' : 'ไม่มีรายการที่ถอนแล้ว')"></h3>
+                        <h3 class="text-xl font-semibold mb-2" x-text="activeTab === 'pending' ? 'ไม่มีรายการรอรับ' : (activeTab === 'awaiting' ? 'ไม่มีรายการในคลัง' : 'ไม่มีรายการที่จำหน่ายออก')"></h3>
                     </div>
                 </template>
 
@@ -9170,8 +9170,8 @@
                                         <td class="px-4 py-3 text-sm text-center whitespace-nowrap" x-text="item.quantity + ' ขวด'"></td>
                                         <td class="px-4 py-3 text-sm whitespace-nowrap" x-text="item.from_store_name || '-'"></td>
                                         <td class="px-4 py-3 text-center whitespace-nowrap">
-                                            <button @click="openWithdrawModal(item)" class="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">
-                                                <i class="fas fa-hand-holding mr-1"></i> ถอน
+                                            <button @click="openWithdrawModal(item)" class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">
+                                                <i class="fas fa-sign-out-alt mr-1"></i> จำหน่าย
                                             </button>
                                         </td>
                                     </tr>
@@ -9289,9 +9289,9 @@
             <!-- Withdraw Modal -->
             <div x-show="showWithdrawModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" x-cloak>
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
-                    <h3 class="text-xl font-bold mb-4"><i class="fas fa-hand-holding text-purple-500 mr-2"></i>ยืนยันการถอน</h3>
+                    <h3 class="text-xl font-bold mb-4"><i class="fas fa-sign-out-alt text-green-500 mr-2"></i>ยืนยันจำหน่ายออก</h3>
 
-                    <div class="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-4 mb-4 space-y-2">
+                    <div class="bg-green-50 dark:bg-green-900/30 rounded-lg p-4 mb-4 space-y-2">
                         <div class="flex justify-between">
                             <span class="text-gray-500">รหัสฝาก:</span>
                             <span class="font-mono font-bold" x-text="selectedDeposit?.deposit_code"></span>
@@ -9305,8 +9305,8 @@
                             <span x-text="selectedDeposit?.item_name"></span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-gray-500">จำนวนถอน:</span>
-                            <span class="font-bold text-purple-600" x-text="selectedDeposit?.quantity + ' ขวด'"></span>
+                            <span class="text-gray-500">จำนวน:</span>
+                            <span class="font-bold text-green-600" x-text="selectedDeposit?.quantity + ' ขวด'"></span>
                         </div>
                     </div>
 
@@ -9317,8 +9317,8 @@
 
                     <div class="flex space-x-3">
                         <button @click="closeWithdrawModal()" class="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">ยกเลิก</button>
-                        <button @click="confirmWithdraw()" :disabled="processing" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50">
-                            <span x-show="!processing"><i class="fas fa-check mr-1"></i> ยืนยันถอน</span>
+                        <button @click="confirmWithdraw()" :disabled="processing" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
+                            <span x-show="!processing"><i class="fas fa-check mr-1"></i> ยืนยันจำหน่าย</span>
                             <span x-show="processing"><i class="fas fa-spinner fa-spin"></i> กำลังดำเนินการ...</span>
                         </button>
                     </div>
