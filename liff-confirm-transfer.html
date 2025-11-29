@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ยืนยันรับโอนคลังกลาง</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .transfer-card {
+            @apply cursor-pointer transition-all;
+        }
+        .transfer-card:hover {
+            @apply transform scale-105 shadow-xl;
+        }
+        .transfer-card.selected {
+            @apply border-2 border-orange-500 bg-orange-50;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-orange-50 to-red-50 min-h-screen">
+
+    <div id="app" class="max-w-md mx-auto p-4">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-t-3xl p-6 -mx-4 -mt-4 mb-6">
+            <div class="text-center">
+                <i class="fas fa-truck text-4xl mb-3"></i>
+                <h1 class="text-2xl font-bold">ยืนยันรับโอนคลังกลาง</h1>
+                <p class="text-sm opacity-90 mt-1">สำหรับพนักงานคลังกลาง</p>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="bg-white rounded-2xl shadow-xl p-8 text-center">
+            <i class="fas fa-spinner fa-spin text-4xl text-orange-600 mb-4"></i>
+            <p class="text-gray-600">กำลังโหลดรายการโอน...</p>
+        </div>
+
+        <!-- Transfer Requests List -->
+        <div id="transfersList" style="display: none;">
+            <div class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                <h2 class="text-lg font-bold text-gray-800 mb-4">
+                    <i class="fas fa-clipboard-list text-orange-600 mr-2"></i>รายการรอยืนยัน
+                </h2>
+
+                <!-- Empty State -->
+                <div id="emptyState" style="display: none;" class="text-center py-8">
+                    <i class="fas fa-inbox text-gray-300 text-5xl mb-4"></i>
+                    <p class="text-gray-500">ไม่มีรายการรอยืนยัน</p>
+                    <p class="text-sm text-gray-400 mt-2">ยังไม่มีคำขอโอนเข้าคลังกลาง</p>
+                </div>
+
+                <!-- Transfers Container -->
+                <div id="transfersContainer" class="space-y-3">
+                    <!-- Transfers will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Confirmation Form (Hidden until transfer selected) -->
+            <div id="confirmationForm" style="display: none;" class="bg-white rounded-2xl shadow-xl p-6 space-y-5">
+                <h2 class="text-lg font-bold text-gray-800 mb-4">
+                    <i class="fas fa-check-circle text-orange-600 mr-2"></i>ยืนยันการรับโอน
+                </h2>
+
+                <!-- Selected Transfer Info -->
+                <div id="selectedTransferInfo" class="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-4">
+                    <!-- Will be populated dynamically -->
+                </div>
+
+                <!-- Items List -->
+                <div id="itemsList" class="bg-gray-50 rounded-xl p-4 mb-4 max-h-60 overflow-y-auto">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-3">รายการเหล้าที่โอน:</h3>
+                    <div id="itemsContainer" class="space-y-2">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Photo Upload -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-camera text-orange-600 mr-2"></i>อัปโหลดรูปยืนยันการรับ *
+                    </label>
+                    <input type="file"
+                           id="confirmPhoto"
+                           accept="image/*"
+                           capture="environment"
+                           onchange="handlePhotoUpload(event)"
+                           class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none transition">
+                    <p class="text-xs text-gray-500 mt-1">รูปถ่ายขวดเหล้าที่รับโอนเข้าคลังกลาง</p>
+                </div>
+
+                <!-- Photo Preview -->
+                <div id="photoPreview" style="display: none;" class="rounded-xl overflow-hidden">
+                    <img id="previewImage" class="w-full h-64 object-cover">
+                </div>
+
+                <!-- Notes -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-sticky-note text-orange-600 mr-2"></i>หมายเหตุ
+                    </label>
+                    <textarea id="notes"
+                              rows="3"
+                              placeholder="หมายเหตุเพิ่มเติม (ถ้ามี)"
+                              class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none transition resize-none"></textarea>
+                </div>
+
+                <!-- Warning Box -->
+                <div class="bg-red-50 border-2 border-red-200 rounded-xl p-4">
+                    <div class="flex items-start space-x-3">
+                        <i class="fas fa-exclamation-triangle text-red-600 text-xl mt-0.5"></i>
+                        <div class="text-sm text-red-800">
+                            <p class="font-semibold mb-1">โปรดตรวจสอบ:</p>
+                            <ul class="list-disc list-inside space-y-1 text-xs">
+                                <li>จำนวนขวดเหล้าถูกต้อง</li>
+                                <li>ประเภทเหล้าตรงกับรายการ</li>
+                                <li>สภาพขวดเหล้าสมบูรณ์</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button onclick="confirmTransfer()"
+                        id="confirmButton"
+                        disabled
+                        class="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                    <i class="fas fa-check-circle mr-2"></i>ยืนยันการรับโอน
+                </button>
+
+                <!-- Back Button -->
+                <button onclick="clearSelection()"
+                        class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 rounded-xl transition">
+                    <i class="fas fa-arrow-left mr-2"></i>เลือกรายการใหม่
+                </button>
+            </div>
+
+            <!-- Close Button -->
+            <button onclick="closeLiff()"
+                    class="w-full mt-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 rounded-xl transition">
+                <i class="fas fa-times mr-2"></i>ปิด
+            </button>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-6 text-sm text-gray-500">
+            <p>Powered by <strong class="text-orange-600">ระบบฝากเหล้า</strong></p>
+        </div>
+    </div>
+
+    <script>
+        let liffId = 'YOUR_LIFF_ID'; // TODO: Replace with actual LIFF ID
+        let userId = null;
+        let displayName = null;
+        let transferRequests = [];
+        let selectedTransfer = null;
+        let uploadedPhotoFile = null;
+
+        // Initialize LIFF
+        window.onload = async function() {
+            try {
+                await liff.init({ liffId: liffId });
+
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                    return;
+                }
+
+                // Get user profile
+                const profile = await liff.getProfile();
+                userId = profile.userId;
+                displayName = profile.displayName;
+
+                console.log('LIFF initialized:', { userId, displayName });
+
+                // Load transfer requests
+                await loadTransferRequests();
+
+            } catch (error) {
+                console.error('LIFF init error:', error);
+                Swal.fire('Error', 'ไม่สามารถเชื่อมต่อ LINE ได้', 'error');
+            }
+        };
+
+        async function loadTransferRequests() {
+            try {
+                // TODO: Call Google Apps Script backend to get pending transfer requests
+                console.log('Loading transfer requests...');
+
+                // Simulated API call
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                // Simulated data
+                transferRequests = [
+                    // Example:
+                    // {
+                    //     id: 'TRANS001',
+                    //     transferCode: 'TRANS-2024-001',
+                    //     fromStore: 'สาขา A',
+                    //     requestDate: '2024-01-15',
+                    //     totalItems: 5,
+                    //     items: [
+                    //         { depositCode: 'DEP-001', alcoholType: 'Whisky', quantity: 2, customerName: 'คุณ A' },
+                    //         { depositCode: 'DEP-002', alcoholType: 'Vodka', quantity: 3, customerName: 'คุณ B' }
+                    //     ],
+                    //     photoUrl: 'https://...',
+                    //     notes: 'หมดอายุ 30 วัน'
+                    // }
+                ];
+
+                // For actual implementation:
+                // const response = await fetch(WEB_APP_URL + '?action=getPendingTransfers');
+                // transferRequests = await response.json();
+
+                renderTransfers();
+
+            } catch (error) {
+                console.error('Load transfers error:', error);
+                Swal.fire('Error', 'ไม่สามารถโหลดรายการโอนได้', 'error');
+            }
+        }
+
+        function renderTransfers() {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('transfersList').style.display = 'block';
+
+            const container = document.getElementById('transfersContainer');
+            const emptyState = document.getElementById('emptyState');
+
+            if (transferRequests.length === 0) {
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            container.innerHTML = transferRequests.map(transfer => `
+                <div class="transfer-card bg-white border-2 border-gray-200 rounded-xl p-4 ${selectedTransfer?.id === transfer.id ? 'selected' : ''}"
+                     onclick="selectTransfer('${transfer.id}')">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <h3 class="font-semibold text-lg text-gray-800">${transfer.transferCode}</h3>
+                            <p class="text-sm text-gray-600">จาก: ${transfer.fromStore}</p>
+                        </div>
+                        <span class="bg-orange-100 text-orange-800 text-xs px-3 py-1 rounded-full">
+                            ${transfer.totalItems} รายการ
+                        </span>
+                    </div>
+
+                    <div class="text-sm text-gray-600">
+                        <i class="fas fa-calendar text-orange-600 mr-1"></i>
+                        ${formatDate(transfer.requestDate)}
+                    </div>
+
+                    ${selectedTransfer?.id === transfer.id ?
+                        '<div class="mt-3 flex items-center text-orange-600 text-sm font-semibold"><i class="fas fa-check-circle mr-2"></i>รายการที่เลือก</div>'
+                        : ''}
+                </div>
+            `).join('');
+        }
+
+        function selectTransfer(transferId) {
+            selectedTransfer = transferRequests.find(t => t.id === transferId);
+
+            if (!selectedTransfer) return;
+
+            // Update UI
+            renderTransfers();
+
+            // Show confirmation form
+            document.getElementById('confirmationForm').style.display = 'block';
+
+            // Populate transfer info
+            document.getElementById('selectedTransferInfo').innerHTML = `
+                <div class="flex items-start space-x-3">
+                    <i class="fas fa-truck text-blue-600 text-2xl"></i>
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-gray-800">${selectedTransfer.transferCode}</h4>
+                        <p class="text-sm text-gray-600">จากสาขา: ${selectedTransfer.fromStore}</p>
+                        <p class="text-sm text-gray-600">วันที่ส่ง: ${formatDate(selectedTransfer.requestDate)}</p>
+                        <p class="text-sm text-gray-600 mt-2">
+                            <span class="font-semibold">จำนวนทั้งหมด:</span>
+                            <span class="text-orange-600 font-bold">${selectedTransfer.totalItems}</span> รายการ
+                        </p>
+                    </div>
+                </div>
+            `;
+
+            // Populate items list
+            document.getElementById('itemsContainer').innerHTML = selectedTransfer.items.map((item, index) => `
+                <div class="bg-white border rounded-lg p-3">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-semibold text-sm">${index + 1}. ${item.depositCode}</p>
+                            <p class="text-xs text-gray-600">${item.customerName}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-semibold">${item.alcoholType}</p>
+                            <p class="text-xs text-gray-600">${item.quantity} ขวด</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            // Show original photo if available
+            if (selectedTransfer.photoUrl) {
+                // Could add a button to view the original photo from the store
+            }
+
+            // Scroll to form
+            document.getElementById('confirmationForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function clearSelection() {
+            selectedTransfer = null;
+            uploadedPhotoFile = null;
+            renderTransfers();
+            document.getElementById('confirmationForm').style.display = 'none';
+            document.getElementById('photoPreview').style.display = 'none';
+            document.getElementById('notes').value = '';
+            document.getElementById('confirmPhoto').value = '';
+            document.getElementById('confirmButton').disabled = true;
+        }
+
+        function handlePhotoUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                uploadedPhotoFile = file;
+
+                // Preview
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('previewImage').src = e.target.result;
+                    document.getElementById('photoPreview').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+
+                // Enable submit button
+                document.getElementById('confirmButton').disabled = false;
+            }
+        }
+
+        async function confirmTransfer() {
+            if (!selectedTransfer) {
+                Swal.fire('Error', 'กรุณาเลือกรายการโอน', 'error');
+                return;
+            }
+
+            if (!uploadedPhotoFile) {
+                Swal.fire('Error', 'กรุณาอัปโหลดรูปยืนยันการรับ', 'error');
+                return;
+            }
+
+            // Get notes
+            const notes = document.getElementById('notes').value.trim();
+
+            // Confirmation
+            const result = await Swal.fire({
+                title: 'ยืนยันการรับโอน?',
+                html: `
+                    <p class="mb-2">กรุณาตรวจสอบให้แน่ใจว่า:</p>
+                    <ul class="text-left text-sm">
+                        <li>✓ จำนวนขวดถูกต้อง (${selectedTransfer.totalItems} รายการ)</li>
+                        <li>✓ ประเภทเหล้าตรงกับรายการ</li>
+                        <li>✓ สภาพขวดเหล้าสมบูรณ์</li>
+                    </ul>
+                `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยันการรับ',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#ea580c'
+            });
+
+            if (!result.isConfirmed) return;
+
+            // Show loading
+            Swal.fire({
+                title: 'กำลังบันทึก...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            try {
+                // TODO: Upload photo to ImgBB first
+                console.log('Uploading photo...');
+
+                // TODO: Call Google Apps Script backend
+                const formData = {
+                    transferId: selectedTransfer.id,
+                    centralUserId: userId,
+                    confirmPhoto: 'PHOTO_URL_FROM_IMGBB', // Replace with actual uploaded URL
+                    notes: notes || '-',
+                    confirmDate: new Date().toISOString()
+                };
+
+                console.log('Confirming transfer:', formData);
+
+                // Simulated API call
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // For actual implementation:
+                // 1. Upload photo to ImgBB
+                // 2. Call backend with photo URL
+                // const response = await fetch(WEB_APP_URL, {
+                //     method: 'POST',
+                //     body: JSON.stringify({
+                //         action: 'confirmCentralTransfer',
+                //         data: formData
+                //     })
+                // });
+                // const result = await response.json();
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ยืนยันสำเร็จ!',
+                    html: `
+                        <div class="text-left">
+                            <p class="mb-2">รับโอนเข้าคลังกลางเรียบร้อยแล้ว</p>
+                            <p class="text-sm text-gray-600">รหัสโอน: <strong>${selectedTransfer.transferCode}</strong></p>
+                            <p class="text-sm text-gray-600">จำนวน: <strong>${selectedTransfer.totalItems} รายการ</strong></p>
+                        </div>
+                    `,
+                    confirmButtonText: 'ปิด',
+                    confirmButtonColor: '#ea580c'
+                }).then(() => {
+                    // Reload or close
+                    closeLiff();
+                });
+
+            } catch (error) {
+                console.error('Confirm error:', error);
+                Swal.fire('Error', 'เกิดข้อผิดพลาดในการยืนยัน', 'error');
+            }
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('th-TH');
+        }
+
+        function closeLiff() {
+            if (liff.isInClient()) {
+                liff.closeWindow();
+            } else {
+                window.close();
+            }
+        }
+    </script>
+</body>
+</html>

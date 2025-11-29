@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ป้ายติดขวดเหล้า</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        /* Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @media print {
+            @page {
+                margin: 0;
+            }
+            body {
+                margin: 0;
+            }
+            .page-break {
+                page-break-after: always;
+            }
+        }
+
+        body {
+            font-family: 'Sarabun', 'TH SarabunPSK', Arial, sans-serif;
+        }
+
+        /* 80mm width (default) */
+        .label-80mm {
+            width: 80mm;
+            margin: 0 auto;
+            padding: 4mm;
+            background: white;
+        }
+
+        /* 58mm width */
+        .label-58mm {
+            width: 58mm;
+            margin: 0 auto;
+            padding: 3mm;
+            background: white;
+        }
+
+        /* Common styles */
+        .bottle-label {
+            border: 3px solid #000;
+            padding: 4mm;
+            text-align: center;
+            background: white;
+        }
+
+        .label-title {
+            font-size: 10pt;
+            font-weight: bold;
+            margin-bottom: 2mm;
+            padding-bottom: 2mm;
+            border-bottom: 2px dashed #000;
+        }
+
+        .deposit-id-large {
+            font-size: 28pt;
+            font-weight: bold;
+            margin: 4mm 0;
+            padding: 3mm;
+            background: #000;
+            color: #fff;
+            border-radius: 2mm;
+            letter-spacing: 2px;
+        }
+
+        .customer-name {
+            font-size: 16pt;
+            font-weight: bold;
+            margin: 3mm 0;
+            color: #000;
+        }
+
+        .info-row {
+            font-size: 12pt;
+            margin: 2mm 0;
+            font-weight: bold;
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 10pt;
+            font-weight: normal;
+        }
+
+        .expiry-warning {
+            font-size: 11pt;
+            margin-top: 3mm;
+            padding: 2mm;
+            background: #ffeb3b;
+            border: 2px solid #f57f17;
+            font-weight: bold;
+            color: #000;
+        }
+
+        .bottle-number {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-top: 3mm;
+            padding: 2mm;
+            border-top: 2px solid #000;
+            color: #333;
+        }
+
+        .store-name-small {
+            font-size: 8pt;
+            color: #999;
+            margin-top: 2mm;
+        }
+
+        /* 58mm specific adjustments */
+        .label-58mm .deposit-id-large { font-size: 24pt; }
+        .label-58mm .customer-name { font-size: 14pt; }
+        .label-58mm .info-row { font-size: 11pt; }
+        .label-58mm .expiry-warning { font-size: 10pt; }
+        .label-58mm .bottle-number { font-size: 12pt; }
+
+        /* Multiple labels container */
+        #labels-container {
+            display: block;
+        }
+
+        .label-wrapper {
+            margin-bottom: 5mm;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            text-align: center;
+            margin: 10px 0;
+            padding: 10px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            color: white;
+        }
+
+        .btn-print {
+            background-color: #6366f1;
+        }
+
+        .btn-print:hover {
+            background-color: #4f46e5;
+        }
+
+        .btn-pdf {
+            background-color: #10b981;
+        }
+
+        .btn-pdf:hover {
+            background-color: #059669;
+        }
+
+        @media print {
+            .action-buttons {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Action Buttons -->
+    <div class="action-buttons" id="actionButtons">
+        <button class="btn btn-print" onclick="window.print()">
+            🖨️ พิมพ์
+        </button>
+        <button class="btn btn-pdf" onclick="downloadPDF()">
+            📄 ดาวน์โหลด PDF
+        </button>
+    </div>
+
+    <div id="labels-container"></div>
+
+    <script>
+        // Generate multiple bottle labels
+        function generateBottleLabels(data) {
+            const container = document.getElementById('labels-container');
+            container.innerHTML = ''; // Clear existing labels
+
+            const totalBottles = parseInt(data.quantity) || 1;
+
+            for (let i = 1; i <= totalBottles; i++) {
+                const labelWrapper = document.createElement('div');
+                labelWrapper.className = 'label-wrapper';
+                if (i < totalBottles) {
+                    labelWrapper.classList.add('page-break');
+                }
+
+                const sizeClass = data.paperSize === '58mm' ? 'label-58mm' : 'label-80mm';
+
+                labelWrapper.innerHTML = `
+                    <div class="${sizeClass}">
+                        <div class="bottle-label">
+                            <div class="label-title">ป้ายติดขวดเหล้า</div>
+
+                            <div class="deposit-id-large">${data.depositId}</div>
+
+                            <div class="customer-name">${data.customerName}</div>
+
+                            <div class="info-row">
+                                <span class="info-label">โทร:</span> ${formatPhoneNumber(data.customerPhone)}
+                            </div>
+
+                            <div class="info-row">
+                                <span class="info-label">เหล้า:</span> ${data.alcoholType}
+                            </div>
+
+                            <div class="expiry-warning">
+                                หมดอายุ: ${data.expiryDate}
+                            </div>
+
+                            ${totalBottles > 1 ? `
+                                <div class="bottle-number">
+                                    ขวดที่ ${i}/${totalBottles}
+                                </div>
+                            ` : ''}
+
+                            <div class="store-name-small">${data.storeName}</div>
+                        </div>
+                    </div>
+                `;
+
+                container.appendChild(labelWrapper);
+            }
+
+            // Auto-print after rendering
+            if (data.autoPrint) {
+                setTimeout(() => {
+                    window.print();
+                }, 500);
+            }
+        }
+
+        // Format phone number to show last 4 digits with mask
+        function formatPhoneNumber(phone) {
+            if (!phone) return '';
+            const phoneStr = phone.toString();
+            if (phoneStr.length >= 4) {
+                const lastFour = phoneStr.slice(-4);
+                return 'xxx-' + lastFour;
+            }
+            return phoneStr;
+        }
+
+        // Download PDF
+        function downloadPDF() {
+            const element = document.getElementById('labels-container');
+            const depositId = element.querySelector('.deposit-id-large')?.textContent || 'labels';
+            const filename = `ป้ายติดขวด_${depositId}_${new Date().getTime()}.pdf`;
+
+            const opt = {
+                margin: 5,
+                filename: filename,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+            };
+
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // Listen for messages from parent window
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'POPULATE_LABELS') {
+                generateBottleLabels(event.data.data);
+            }
+        });
+
+        // For direct loading (non-iframe mode)
+        window.onload = function() {
+            // Check if data is passed via URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const dataParam = urlParams.get('data');
+            if (dataParam) {
+                try {
+                    const data = JSON.parse(decodeURIComponent(dataParam));
+                    generateBottleLabels(data);
+                } catch (error) {
+                    console.error('Error parsing data:', error);
+                }
+            }
+        };
+    </script>
+</body>
+</html>

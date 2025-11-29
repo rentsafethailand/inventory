@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="th" x-data="{ isDarkMode: localStorage.getItem('isDarkMode') === 'true' }" :class="{ 'dark': isDarkMode }">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เช็คสต๊อกประจำวัน</title>
+
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap');
+        :root {
+            --light-bg: #F9FAFB; --light-card-bg: #FFFFFF; --light-border: #E5E7EB;
+            --light-text-primary: #1F2937; --light-text-secondary: #6B7280; --light-icon-bg: #E0F2FE;
+            --dark-bg: #111827; --dark-card-bg: #1F2937; --dark-border: #374151;
+            --dark-text-primary: #F9FAFB; --dark-text-secondary: #9CA3AF; --dark-icon-bg: #1E3A8A;
+            --accent-blue: #3B82F6; --accent-yellow: #F59E0B; --accent-red: #EF4444; --accent-green: #10B981;
+        }
+        body {
+            font-family: 'Sarabun', sans-serif;
+            margin: 0;
+            padding: 1rem;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .dark body { background-color: var(--dark-bg); color: var(--dark-text-primary); }
+        body { background-color: var(--light-bg); color: var(--light-text-primary); }
+        .main-container { max-width: 900px; margin: 0 auto; }
+        main { display: flex; flex-direction: column; gap: 1.5rem; margin-top: 1.5rem; }
+        [x-cloak] { display: none !important; }
+
+        .login-container { display: flex; align-items: center; justify-content: center; min-height: 80vh; }
+        .login-card {
+            background-color: var(--light-card-bg);
+            border: 1px solid var(--light-border);
+            border-radius: 0.75rem;
+            padding: 2rem;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .dark .login-card { background-color: var(--dark-card-bg); border-color: var(--dark-border); }
+        .login-card h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .login-card p { color: var(--light-text-secondary); margin-bottom: 1.5rem; }
+        .dark .login-card p { color: var(--dark-text-secondary); }
+        .form-group { margin-bottom: 1rem; text-align: left; }
+        .form-group label { display: block; font-size: 0.9rem; font-weight: 500; margin-bottom: 0.25rem; }
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--light-border);
+            border-radius: 0.5rem;
+            box-sizing: border-box;
+        }
+        .dark .form-group input {
+            background-color: var(--dark-bg);
+            border-color: var(--dark-border);
+            color: var(--dark-text-primary);
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 700;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .btn-primary { background-color: var(--accent-blue); color: white; }
+        .btn-primary:hover { background-color: #2563EB; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-full { width: 100%; }
+        .btn-gray { background-color: #6B7280; color: white; }
+        .btn-gray:hover { background-color: #4B5563; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(107, 114, 128, 0.4); }
+        .btn-success { background-color: var(--accent-green); color: white; }
+        .btn-success:hover { background-color: #059669; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4); }
+
+        .profile-container { position: absolute; top: 1rem; right: 4rem; }
+        .profile-button { cursor: pointer; display: flex; align-items: center; gap: 0.5rem; }
+        .profile-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: var(--light-icon-bg);
+            color: var(--accent-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .dark .profile-icon { background-color: var(--dark-icon-bg); }
+        .profile-dropdown {
+            position: absolute;
+            right: 0;
+            top: 100%;
+            margin-top: 0.5rem;
+            background-color: var(--light-card-bg);
+            border: 1px solid var(--light-border);
+            border-radius: 0.5rem;
+            min-width: 180px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        .dark .profile-dropdown { background-color: var(--dark-card-bg); border-color: var(--dark-border); }
+        .dropdown-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .dropdown-item:hover { background-color: var(--light-bg); }
+        .dark .dropdown-item:hover { background-color: var(--dark-bg); }
+        .dropdown-divider { border-top: 1px solid var(--light-border); }
+        .dark .dropdown-divider { border-color: var(--dark-border); }
+
+        .page-header { text-align: center; }
+        .page-header .icon-wrapper {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            background-color: var(--light-icon-bg);
+            color: var(--accent-blue);
+        }
+        .dark .page-header .icon-wrapper { background-color: var(--dark-icon-bg); }
+        .page-header h1 { font-size: 1.75rem; font-weight: 700; margin: 0; }
+        .info-badge {
+            display: inline-block;
+            margin-top: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            border: 1px solid var(--accent-blue);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+        }
+        .dark .info-badge {
+            border-color: var(--accent-blue);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.08));
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+        }
+        .info-badge p {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--accent-blue);
+        }
+        .dark .info-badge p {
+            color: #60A5FA;
+        }
+
+        .theme-toggle {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 9999px;
+            background-color: var(--light-card-bg);
+            border: 1px solid var(--light-border);
+            color: var(--light-text-secondary);
+        }
+        .dark .theme-toggle {
+            background-color: var(--dark-card-bg);
+            border-color: var(--dark-border);
+            color: var(--dark-text-secondary);
+        }
+
+        .section-card {
+            background-color: var(--light-card-bg);
+            border: 1px solid var(--light-border);
+            border-radius: 0.75rem;
+            overflow: hidden;
+        }
+        .dark .section-card { background-color: var(--dark-card-bg); border-color: var(--dark-border); }
+        .section-card-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--light-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .dark .section-card-header { border-color: var(--dark-border); }
+        .section-card-header h3 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .category-progress {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+        .category-progress-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            transition: all 0.2s;
+        }
+        .category-progress-badge.complete {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+        }
+        .dark .category-progress-badge.complete {
+            background-color: rgba(16, 185, 129, 0.2);
+        }
+        .category-progress-badge.partial {
+            background-color: rgba(245, 158, 11, 0.15);
+            color: var(--accent-yellow);
+        }
+        .dark .category-progress-badge.partial {
+            background-color: rgba(245, 158, 11, 0.2);
+        }
+        .category-progress-badge.empty {
+            background-color: rgba(107, 114, 128, 0.15);
+            color: var(--light-text-secondary);
+        }
+        .dark .category-progress-badge.empty {
+            background-color: rgba(156, 163, 175, 0.2);
+            color: var(--dark-text-secondary);
+        }
+
+        /* ปรับปรุง: กล่องเริ่มนับสต๊อก */
+        .start-counting-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 0;
+        }
+        .start-counting-card {
+            background-color: var(--light-card-bg);
+            border: 1px solid var(--light-border);
+            border-radius: 1rem;
+            padding: 3rem 2rem;
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .dark .start-counting-card {
+            background-color: var(--dark-card-bg);
+            border-color: var(--dark-border);
+        }
+        .start-counting-card .icon {
+            font-size: 4rem;
+            color: var(--light-text-secondary);
+            margin-bottom: 1.5rem;
+        }
+        .dark .start-counting-card .icon {
+            color: var(--dark-text-secondary);
+        }
+        .start-counting-card h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .start-counting-card p {
+            color: var(--light-text-secondary);
+            margin-bottom: 2rem;
+            font-size: 1rem;
+        }
+        .dark .start-counting-card p {
+            color: var(--dark-text-secondary);
+        }
+
+        .results-summary-card {
+            background-color: var(--light-card-bg);
+            border: 1px solid var(--light-border);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        .dark .results-summary-card { background-color: var(--dark-card-bg); border-color: var(--dark-border); }
+        .results-summary-card .icon { color: var(--accent-green); margin-bottom: 1rem; }
+        .results-summary-card .title { font-size: 1.25rem; font-weight: 700; }
+        .results-summary-card .subtitle { color: var(--light-text-secondary); font-size: 0.9rem; }
+        .dark .results-summary-card .subtitle { color: var(--dark-text-secondary); }
+
+        /* Results view - completed counting */
+        .results-category-header {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
+            padding: 1rem 1.25rem;
+            border-bottom: 2px solid var(--accent-blue);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .results-category-header:hover {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.08));
+        }
+        .dark .results-category-header {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.08));
+        }
+        .dark .results-category-header:hover {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.12));
+        }
+        .results-category-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.125rem;
+            font-weight: 700;
+        }
+        .results-category-summary {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.9rem;
+        }
+        .results-total-badge {
+            background-color: var(--accent-blue);
+            color: white;
+            padding: 0.375rem 0.875rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+        .results-items-grid {
+            padding: 0; /* Remove padding here */
+            display: grid;
+            gap: 0; /* Remove gap */
+        }
+        .results-item-card {
+            background-color: transparent; /* Make background transparent */
+            border: none; /* Remove border */
+            border-bottom: 1px solid var(--light-border); /* Add bottom border */
+            border-radius: 0; /* Remove border radius */
+            padding: 0.75rem 1rem; /* Adjust padding */
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start; /* Align items to start */
+            transition: all 0.2s;
+        }
+         .dark .results-item-card {
+             border-bottom-color: var(--dark-border);
+        }
+        .results-items-grid > div:last-child .results-item-card {
+            border-bottom: none; /* Remove border for last item */
+        }
+
+        .results-item-card:hover {
+            background-color: var(--light-bg); /* Add hover effect */
+            transform: none; /* Remove transform */
+            box-shadow: none; /* Remove box shadow */
+            border-color: var(--light-border); /* Reset border color */
+        }
+        .dark .results-item-card:hover {
+            background-color: var(--dark-bg);
+            border-color: var(--dark-border);
+        }
+        .results-item-info {
+            flex-grow: 1;
+            min-width: 0;
+            padding-right: 1rem; /* Add some padding to prevent overlap */
+        }
+        .results-item-name {
+            font-weight: 600;
+            font-size: 0.95rem; /* Adjust font size */
+            margin-bottom: 0.125rem;
+            white-space: normal; /* Allow wrapping */
+            overflow: visible; /* Remove overflow */
+            text-overflow: clip; /* Remove text ellipsis */
+        }
+        .results-item-code {
+            font-size: 0.8rem; /* Adjust font size */
+            color: var(--light-text-secondary);
+            font-family: 'Courier New', monospace;
+        }
+        .dark .results-item-code {
+            color: var(--dark-text-secondary);
+        }
+
+        /* --- [START] CSS ที่เพิ่มเข้ามาสำหรับแสดงผลต่าง --- */
+        .item-diff {
+            text-align: right;
+            flex-shrink: 0;
+            padding-left: 1rem;
+            font-size: 0.8rem;
+            color: var(--light-text-secondary);
+            margin-top: 0.1rem; /* Add small top margin */
+        }
+        .dark .item-diff { color: var(--dark-text-secondary); }
+        .item-diff .diff-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            min-width: 120px;
+        }
+        .item-diff .diff-row-total {
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+            padding-top: 0.25rem;
+            border-top: 1px solid var(--light-border);
+        }
+        .dark .item-diff .diff-row-total { border-color: var(--dark-border); }
+        .pos-value { color: var(--accent-green) !important; }
+        .neg-value { color: var(--accent-red) !important; }
+        /* .zero-value ไม่จำเป็นแล้ว เพราะเราจะให้ 0 เป็นสีเขียว */
+        /* --- [END] CSS ที่เพิ่มเข้ามาสำหรับแสดงผลต่าง --- */
+
+        /* ปรับปรุง: Progress Bar ที่สวยงาม */
+        .progress-container {
+            position: sticky;
+            top: 1rem;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            border: 1px solid var(--light-border);
+            margin-bottom: 1rem;
+        }
+        .dark .progress-container {
+            background: rgba(31, 41, 55, 0.95);
+            border-color: var(--dark-border);
+        }
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .progress-title {
+            font-weight: 600;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .progress-stats {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .progress-percentage {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+        .progress-count {
+            font-size: 0.9rem;
+            color: var(--light-text-secondary);
+        }
+        .dark .progress-count {
+            color: var(--dark-text-secondary);
+        }
+        .progress-bar-wrapper {
+            width: 100%;
+            height: 12px;
+            background-color: var(--light-border);
+            border-radius: 9999px;
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 1rem;
+        }
+        .dark .progress-bar-wrapper {
+            background-color: var(--dark-border);
+        }
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .progress-bar-fill.incomplete {
+            background: linear-gradient(90deg, #3B82F6 0%, #06B6D4 100%);
+        }
+        .progress-bar-fill.complete {
+            background: linear-gradient(90deg, #10B981 0%, #059669 100%);
+        }
+        .progress-bar-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* ปรับปรุง: รายการสินค้า - กระชับและมี unit ชัดเจน */
+        .product-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--light-border);
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+        .dark .product-item {
+            border-bottom-color: var(--dark-border);
+        }
+        .product-item:last-child {
+            border-bottom: none;
+        }
+        /* ปรับปรุง: พื้นหลังสีเขียวสำหรับรายการที่นับแล้ว */
+        .product-item.counted {
+            background: linear-gradient(90deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+            border-left-color: var(--accent-green);
+        }
+        .dark .product-item.counted {
+            background: linear-gradient(90deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.08) 100%);
+        }
+        .product-item:hover {
+            background-color: var(--light-bg);
+        }
+        .dark .product-item:hover {
+            background-color: var(--dark-bg);
+        }
+        .product-item.counted:hover {
+            background: linear-gradient(90deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.08) 100%);
+        }
+        .product-info {
+            flex-grow: 1;
+            min-width: 0;
+        }
+        .product-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.125rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .product-code {
+            font-size: 0.8rem;
+            color: var(--light-text-secondary);
+        }
+        .dark .product-code {
+            color: var(--dark-text-secondary);
+        }
+        .product-input-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+        .product-input {
+            width: 100px;
+            text-align: right;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--light-border);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .dark .product-input {
+            background-color: var(--dark-bg);
+            border-color: var(--dark-border);
+            color: var(--dark-text-primary);
+        }
+        .product-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        /* ปรับปรุง: แสดง unit ชัดเจน */
+        .product-unit {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--light-text-secondary);
+            min-width: 50px;
+        }
+        .dark .product-unit {
+            color: var(--dark-text-secondary);
+        }
+
+        /* Loading overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            z-index: 9999;
+        }
+        .dark .loading-overlay {
+            background-color: rgba(17, 24, 39, 0.95);
+        }
+        .loading-spinner {
+            font-size: 3rem;
+            color: var(--accent-blue);
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .loading-text {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--light-text-primary);
+        }
+        .dark .loading-text {
+            color: var(--dark-text-primary);
+        }
+
+        /* SweetAlert2 custom styles */
+        .swal-wide {
+            width: 600px !important;
+            max-width: 90% !important;
+        }
+    </style>
+</head>
+<body>
+    <div x-data="dailyCheckApp()" x-init="init()" data-store-id="<?= storeId ?>" data-date="<?= date ?>" class="main-container" x-cloak>
+
+        <div x-show="loading" class="loading-overlay">
+            <i class="fa-solid fa-spinner loading-spinner"></i>
+            <p class="loading-text">กำลังโหลดข้อมูล...</p>
+        </div>
+
+        <div x-show="error && !isLoggedIn" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert"><p class="font-bold">เกิดข้อผิดพลาด</p><p x-text="error"></p></div>
+
+        <template x-if="!isLoggedIn && !loading">
+            <div class="login-container">
+                <div class="login-card">
+                    <div class="icon-wrapper" style="margin: 0 auto 1rem;"><i class="fa-solid fa-lock fa-xl"></i></div>
+                    <h2>กรุณาเข้าสู่ระบบ</h2>
+                    <p>เพื่อเข้าถึงหน้าเช็คสต๊อกประจำวัน</p>
+                    <div x-show="authError" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 text-sm text-left" role="alert">
+                        <strong class="font-bold">เกิดข้อผิดพลาด:</strong>
+                        <span class="block sm:inline" x-text="authError"></span>
+                    </div>
+                    <form @submit.prevent="login()">
+                        <div class="form-group">
+                            <label for="username">ชื่อผู้ใช้</label>
+                            <input type="text" id="username" x-model="loginForm.username" @input="authError = null" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">รหัสผ่าน</label>
+                            <input type="password" id="password" x-model="loginForm.password" @input="authError = null" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full" :disabled="loginForm.loading">
+                            <span x-show="!loginForm.loading">เข้าสู่ระบบ</span>
+                            <span x-show="loginForm.loading"><i class="fa-solid fa-spinner fa-spin"></i> กำลังตรวจสอบ...</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </template>
+
+
+
+
+        <template x-if="isLoggedIn && !loading">
+            <div>
+                <button @click="isDarkMode = !isDarkMode; localStorage.setItem('isDarkMode', isDarkMode)" class="theme-toggle">
+                    <i :class="isDarkMode ? 'fa-solid fa-sun' : 'fa-solid fa-moon'"></i>
+                </button>
+                <div x-data="{ open: false }" @click.away="open = false" class="profile-container">
+                    <div @click="open = !open" class="profile-button">
+                        <span class="text-sm font-medium" x-text="user.username"></span>
+                        <div class="profile-icon"><i class="fa-solid fa-user"></i></div>
+                    </div>
+                    <div x-show="open" x-transition class="profile-dropdown">
+                        <button @click="changePassword()" class="dropdown-item"><i class="fa-solid fa-key" style="width: 20px;"></i> เปลี่ยนรหัสผ่าน</button>
+                        <div class="dropdown-divider"></div>
+                        <button @click="logout()" class="dropdown-item" style="color: var(--accent-red);"><i class="fa-solid fa-right-from-bracket" style="width: 20px;"></i> ออกจากระบบ</button>
+                    </div>
+                </div>
+
+                <template x-if="isAuthorized">
+                    <div>
+                        <header class="page-header">
+                            <div class="icon-wrapper"><i class="fa-solid fa-clipboard-list fa-xl"></i></div>
+                            <h1>เช็คสต๊อกประจำวัน</h1>
+                            <div class="info-badge"><p x-text="`สาขา: ${storeName} | วันที่: ${formattedDate}`"></p></div>
+                        </header>
+
+                        <main>
+                            <div x-show="!hasCounted && !isCounting" class="start-counting-container">
+                                <div class="start-counting-card">
+                                    <div class="icon"><i class="fa-solid fa-box-open"></i></div>
+                                    <h3>วันนี้ยังไม่ได้นับสต๊อก</h3>
+                                    <p>กรุณาเริ่มนับสต๊อกเพื่อบันทึกข้อมูล</p>
+                                    <button @click="startCounting()" class="btn btn-primary">
+                                        <i class="fa-solid fa-play"></i>
+                                        <span>เริ่มนับสต๊อก</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div x-show="hasCounted && !isCounting" class="space-y-4">
+                                <div class="results-summary-card">
+                                    <div class="icon"><i class="fa-solid fa-check-circle fa-3x"></i></div>
+                                    <h3 class="title">นับสต๊อกเรียบร้อยแล้ว</h3>
+                                    <p class="subtitle">วันนี้มีรายการนับทั้งหมด <b x-text="countData.items.length"></b> รายการ</p>
+                                    <p x-show="countData.countedBy" class="subtitle" style="margin-top: 0.5rem;">
+                                        <i class="fa-solid fa-user" style="color: var(--accent-blue);"></i>
+                                        นับโดย: <b x-text="countData.countedBy" style="color: var(--accent-blue);"></b>
+                                    </p>
+                                </div>
+                                <template x-for="category in countData.groupedItems" :key="category.name">
+                                    <div class="section-card" x-data="{ collapsed: false }">
+                                        <div class="results-category-header" @click="collapsed = !collapsed">
+                                            <div class="results-category-title">
+                                                <i class="fa-solid fa-folder" style="color: var(--accent-blue); font-size: 1.25rem;"></i>
+                                                <span x-text="category.name"></span>
+                                            </div>
+                                            <div class="results-category-summary">
+                                                <span class="results-total-badge">
+                                                    <i class="fa-solid fa-boxes-stacked"></i>
+                                                    <span x-text="`${category.items.length} รายการ`"></span>
+                                                </span>
+                                                <i class="fa-solid text-sm" style="margin-left: 0.5rem;" :class="collapsed ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
+                                            </div>
+                                        </div>
+                                        <div x-show="!collapsed" x-transition class="results-items-grid">
+
+                                            <template x-for="item in category.items" :key="item.product_code">
+                                                <div class="results-item-card"> <div class="results-item-info">
+                                                        <div class="results-item-name" x-text="item.product_name"></div>
+                                                        <div class="results-item-code" x-text="item.product_code"></div>
+                                                    </div>
+
+                                                    <div class="item-diff">
+                                                        <div class="diff-row">
+                                                            <span>POS:</span>
+                                                            <span x-text="item.pos_quantity !== null ? item.pos_quantity.toFixed(2) : 'N/A'"></span>
+                                                        </div>
+                                                        <div class="diff-row">
+                                                            <span>นับได้:</span>
+                                                            <span x-text="item.manual_quantity.toFixed(2)"></span>
+                                                        </div>
+                                                        <template x-if="item.difference !== null">
+                                                            <div class="diff-row diff-row-total" :class="{
+                                                                'pos-value': item.difference >= 0, /* --- แก้ไขตรงนี้ --- */
+                                                                'neg-value': item.difference < 0
+                                                            }">
+                                                                <span>ผลต่าง:</span>
+                                                                <span x-text="(item.difference > 0 ? '+' : '') + item.difference.toFixed(2)"></span>
+                                                            </div>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                            </template>
+
+
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                            <div x-show="isCounting">
+                                <div class="progress-container">
+                                    <div class="progress-header">
+                                        <div class="progress-title">
+                                            <i class="fa-solid fa-tasks"></i>
+                                            <span>ความคืบหน้า</span>
+                                        </div>
+                                        <div class="progress-stats">
+                                            <span class="progress-percentage"
+                                                  :style="isCountingComplete ? 'color: var(--accent-green);' : ''"
+                                                  x-text="`${countProgress.total > 0 ? Math.round((countProgress.counted / countProgress.total) * 100) : 0}%`"></span>
+                                            <span class="progress-count" x-text="`(${countProgress.counted}/${countProgress.total})`"></span>
+                                        </div>
+                                    </div>
+                                    <div class="progress-bar-wrapper">
+                                        <div class="progress-bar-fill"
+                                             :class="isCountingComplete ? 'complete' : 'incomplete'"
+                                             :style="`width: ${countProgress.total > 0 ? (countProgress.counted / countProgress.total * 100) : 0}%`">
+                                        </div>
+                                    </div>
+                                    <button @click="saveCount()"
+                                            class="btn btn-full"
+                                            :class="isCountingComplete ? 'btn-success' : 'btn-gray'">
+                                        <i class="fa-solid fa-save"></i>
+                                        <span>บันทึกการนับ</span>
+                                    </button>
+                                </div>
+
+                                <template x-for="(category, catIndex) in countData.itemsByCategory" :key="category.name">
+                                    <div class="section-card">
+                                        <div class="section-card-header" @click="category.collapsed = !category.collapsed">
+                                            <h3>
+                                                <i class="fa-solid fa-folder" style="color: var(--accent-blue);"></i>
+                                                <span x-text="category.name"></span>
+                                            </h3>
+                                            <div class="category-progress">
+                                                <div class="category-progress-badge"
+                                                     :class="getCategoryProgress(category).status">
+                                                    <i class="fa-solid fa-circle-check" x-show="getCategoryProgress(category).status === 'complete'"></i>
+                                                    <i class="fa-solid fa-circle-half-stroke" x-show="getCategoryProgress(category).status === 'partial'"></i>
+                                                    <i class="fa-regular fa-circle" x-show="getCategoryProgress(category).status === 'empty'"></i>
+                                                    <span x-text="`${getCategoryProgress(category).counted}/${getCategoryProgress(category).total}`"></span>
+                                                </div>
+                                                <i class="fa-solid text-sm" :class="category.collapsed ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
+                                            </div>
+                                        </div>
+                                        <div x-show="!category.collapsed" x-transition>
+                                            <template x-for="(product, prodIndex) in category.products" :key="product.product_code">
+                                                <div class="product-item"
+                                                     :class="{ 'counted': product.quantity !== null && product.quantity !== '' }">
+                                                    <div class="product-info">
+                                                        <div class="product-name" x-text="product.product_name"></div>
+                                                        <div class="product-code" x-text="product.product_code"></div>
+                                                    </div>
+                                                    <div class="product-input-group">
+                                                        <input type="number"
+                                                               step="any"
+                                                               x-model.number="product.quantity"
+                                                               placeholder="0"
+                                                               class="product-input">
+                                                        <span class="product-unit" x-text="product.unit || 'ชิ้น'"></span>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </main>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </div>
+
+<script>
+    function dailyCheckApp() {
+        return {
+            loading: true,
+            error: null,
+            authError: null,
+            isLoggedIn: false,
+            isAuthorized: false,
+            user: null,
+            storeId: null,
+            sheetId: null,
+            storeName: '',
+            date: null,
+            formattedDate: '',
+            hasCounted: false,
+            isCounting: false,
+            countData: {
+                items: [],
+                groupedItems: [],
+                itemsByCategory: [],
+                countedBy: null
+            },
+            loginForm: {
+                username: '',
+                password: '',
+                loading: false
+            },
+
+            get countProgress() {
+                if (!this.countData || !this.countData.itemsByCategory) return { total: 0, counted: 0 };
+                let total = 0;
+                let counted = 0;
+                this.countData.itemsByCategory.forEach(category => {
+                    category.products.forEach(product => {
+                        total++;
+                        if (product.quantity !== null && product.quantity !== '') {
+                            counted++;
+                        }
+                    });
+                });
+                return { total: total, counted: counted };
+            },
+
+            getCategoryProgress(category) {
+                if (!category || !category.products) return { total: 0, counted: 0, status: 'empty' };
+                let total = category.products.length;
+                let counted = 0;
+                category.products.forEach(product => {
+                    if (product.quantity !== null && product.quantity !== '') {
+                        counted++;
+                    }
+                });
+                let status = 'empty';
+                if (counted === total && total > 0) {
+                    status = 'complete';
+                } else if (counted > 0) {
+                    status = 'partial';
+                }
+                return { total, counted, status };
+            },
+
+            get isCountingComplete() {
+                const progress = this.countProgress;
+                return progress.total > 0 && progress.counted === progress.total;
+            },
+
+            init() {
+                this.storeId = this.$el.dataset.storeId;
+                this.date = this.$el.dataset.date;
+                if (!this.storeId || !this.date) {
+                    this.error = 'ข้อมูลไม่ครบถ้วน (ไม่พบรหัสสาขาหรือวันที่)';
+                    this.loading = false;
+                    return;
+                }
+                const dateParts = this.date.split('-');
+                this.formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+
+                const session = localStorage.getItem('stockCountSession');
+                if (session) {
+                    this.user = JSON.parse(session);
+                    this.isLoggedIn = true;
+                    this.authorizeAndFetch();
+                } else {
+                    this.loading = false;
+                }
+            },
+
+            login() {
+                this.loginForm.loading = true;
+                this.authError = null;
+                google.script.run
+                    .withSuccessHandler(result => {
+                        this.loginForm.loading = false;
+                        if (result.success) {
+                            this.user = result.user;
+                            this.isLoggedIn = true;
+                            localStorage.setItem('stockCountSession', JSON.stringify(result.user));
+                            this.authorizeAndFetch();
+                        } else {
+                            this.authError = result.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
+                        }
+                    })
+                    .withFailureHandler(error => {
+                        this.loginForm.loading = false;
+                        this.authError = error.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ';
+                    })
+                    .doLogin(this.loginForm.username, this.loginForm.password);
+            },
+
+            logout() {
+                localStorage.removeItem('stockCountSession');
+                this.isLoggedIn = false;
+                this.user = null;
+                this.isAuthorized = false;
+                this.authError = null;
+                this.loginForm.username = '';
+                this.loginForm.password = '';
+            },
+
+            changePassword() {
+                Swal.fire({
+                    title: 'เปลี่ยนรหัสผ่าน',
+                    html: `
+                        <div style="text-align: left;">
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">รหัสผ่านใหม่</label>
+                                <input type="password" id="newPassword" class="swal2-input" style="width: 100%; margin: 0;" placeholder="กรอกรหัสผ่านใหม่">
+                            </div>
+                            <div style="margin-bottom: 0.5rem;">
+                                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">ยืนยันรหัสผ่านใหม่</label>
+                                <input type="password" id="confirmPassword" class="swal2-input" style="width: 100%; margin: 0;" placeholder="กรอกรหัสผ่านอีกครั้ง">
+                            </div>
+                        </div>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonText: 'เปลี่ยนรหัสผ่าน',
+                    cancelButtonText: 'ยกเลิก',
+                    confirmButtonColor: '#3B82F6',
+                    cancelButtonColor: '#6B7280',
+                    focusConfirm: false,
+                    preConfirm: () => {
+                        const newPassword = document.getElementById('newPassword').value;
+                        const confirmPassword = document.getElementById('confirmPassword').value;
+
+                        if (!newPassword || !confirmPassword) {
+                            Swal.showValidationMessage('กรุณากรอกรหัสผ่านให้ครบ');
+                            return false;
+                        }
+
+                        if (newPassword.length < 6) {
+                            Swal.showValidationMessage('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
+                            return false;
+                        }
+
+                        if (newPassword !== confirmPassword) {
+                            Swal.showValidationMessage('รหัสผ่านไม่ตรงกัน');
+                            return false;
+                        }
+
+                        return { newPassword };
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: 'กำลังเปลี่ยนรหัสผ่าน...',
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading()
+                        });
+
+                        google.script.run
+                            .withSuccessHandler(response => {
+                                if (response.success) {
+                                    Swal.fire({
+                                        title: 'สำเร็จ!',
+                                        text: 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว',
+                                        icon: 'success',
+                                        confirmButtonColor: '#10B981'
+                                    });
+                                } else {
+                                    Swal.fire({
+                                        title: 'ผิดพลาด',
+                                        text: response.message,
+                                        icon: 'error'
+                                    });
+                                }
+                            })
+                            .withFailureHandler(error => {
+                                Swal.fire({
+                                    title: 'เกิดข้อผิดพลาด',
+                                    text: error.message,
+                                    icon: 'error'
+                                });
+                            })
+                            .changePassword(this.user.username, result.value.newPassword);
+                    }
+                });
+            },
+
+            authorizeAndFetch() {
+                const authorizedStore = this.user.stores.find(s => s.store_id === this.storeId);
+                if (authorizedStore) {
+                    this.isAuthorized = true;
+                    this.sheetId = authorizedStore.sheet_id;
+                    this.storeName = authorizedStore.name;
+                    this.checkCountStatus();
+                } else {
+                    this.isAuthorized = false;
+                    this.loading = false;
+                    this.authError = 'คุณไม่มีสิทธิ์เข้าถึงข้อมูลของสาขานี้ กรุณาติดต่อผู้ดูแลระบบ';
+                    localStorage.removeItem('stockCountSession');
+                    this.isLoggedIn = false;
+                }
+            },
+
+            checkCountStatus() {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(response => {
+                        if (response.success) {
+                            this.hasCounted = response.hasExisting;
+                            if(response.hasExisting) {
+                                // Store counted_by information
+                                this.countData.countedBy = response.countedBy || null;
+
+                                // --- [START] ส่วนที่แก้ไข: ประมวลผล posCounts ---
+                                const itemsWithCategory = Object.entries(response.existingCounts).map(([code, qty]) => {
+                                    const product = response.products.find(p => p.product_code === code) || { product_name: 'Unknown', category: 'ไม่มีหมวดหมู่' };
+
+                                    const manualQty = parseFloat(qty) || 0;
+                                    const posQty = response.posCounts[code]; // ดึงค่า POS จาก response ใหม่
+                                    let diff = null;
+
+                                    if (posQty !== undefined && posQty !== null) {
+                                        diff = manualQty - (parseFloat(posQty) || 0);
+                                    }
+
+                                    return {
+                                        product_code: code,
+                                        product_name: product.product_name,
+                                        category: product.category,
+                                        manual_quantity: manualQty,
+                                        pos_quantity: (posQty !== undefined && posQty !== null) ? parseFloat(posQty) : null, // แปลงเป็น Float ถ้ามีค่า
+                                        difference: diff
+                                    };
+                                });
+                                // --- [END] สิ้นสุดส่วนแก้ไข ---
+
+                                const grouped = itemsWithCategory.reduce((acc, item) => {
+                                    const categoryName = item.category || 'ไม่มีหมวดหมู่';
+                                    if (!acc[categoryName]) { acc[categoryName] = []; }
+                                    acc[categoryName].push(item);
+                                    return acc;
+                                }, {});
+
+                                this.countData.groupedItems = Object.entries(grouped).map(([name, items]) => ({ name: name, items: items }));
+                                this.countData.items = itemsWithCategory;
+                            }
+                        } else { this.error = "ไม่สามารถตรวจสอบสถานะการนับได้: " + response.message; }
+                        this.loading = false;
+                    })
+                    .withFailureHandler(err => {
+                        this.error = "เกิดข้อผิดพลาดรุนแรง: " + err.message;
+                        this.loading = false;
+                    })
+                    .getManualCountForm(this.sheetId, this.date);
+            },
+
+            startCounting() {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(response => {
+                        if(response.success) {
+                             const grouped = response.products.reduce((acc, product) => {
+                                const category = product.category || 'ไม่มีหมวดหมู่';
+                                if (!acc[category]) {
+                                    acc[category] = { name: category, products: [], collapsed: false };
+                                }
+                                const existingQty = response.existingCounts[product.product_code];
+                                product.quantity = existingQty !== undefined ? existingQty : null;
+                                product.unit = product.unit || 'ชิ้น';
+                                acc[category].products.push(product);
+                                return acc;
+                            }, {});
+                            this.countData.itemsByCategory = Object.values(grouped);
+                            this.isCounting = true;
+                        } else { this.error = "ไม่สามารถโหลดรายการสินค้าได้: " + response.message; }
+                        this.loading = false;
+                    })
+                    .getManualCountForm(this.sheetId, this.date);
+            },
+
+            saveCount() {
+                const countsToSubmit = [];
+                let hasEmpty = false;
+                let zeroItems = [];
+
+                this.countData.itemsByCategory.forEach(category => {
+                    category.products.forEach(product => {
+                        const qty = parseFloat(product.quantity) || 0;
+
+                        if (product.quantity === null || product.quantity === '') {
+                            hasEmpty = true;
+                        }
+
+                        if (qty === 0) {
+                            zeroItems.push({
+                                name: product.product_name,
+                                code: product.product_code
+                            });
+                        }
+
+                        countsToSubmit.push({
+                            product_code: product.product_code,
+                            product_name: product.product_name,
+                            quantity: qty
+                        });
+                    });
+                });
+
+                if (hasEmpty) {
+                    Swal.fire('ข้อมูลไม่ครบ', 'กรุณากรอกจำนวนนับให้ครบทุกรายการ (หากไม่มีให้ใส่ 0)', 'warning');
+                    return;
+                }
+
+                // ถ้ามีรายการที่เท่ากับ 0 ให้แจ้งเตือน
+                if (zeroItems.length > 0) {
+                    const itemsList = zeroItems.map(item =>
+                        `<div style="text-align: left; padding: 0.5rem; border-bottom: 1px solid #e5e7eb;">
+                            <div style="font-weight: 600;">${item.name}</div>
+                            <div style="font-size: 0.85rem; color: #6b7280; font-family: monospace;">${item.code}</div>
+                        </div>`
+                    ).join('');
+
+                    Swal.fire({
+                        title: 'พบรายการที่มีจำนวน 0',
+                        html: `
+                            <div style="text-align: left; margin-bottom: 1rem;">
+                                <p style="margin-bottom: 1rem; color: #f59e0b; font-weight: 600;">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    มีสินค้า ${zeroItems.length} รายการ ที่มีจำนวนเท่ากับ 0:
+                                </p>
+                                <div style="max-height: 300px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 1rem;">
+                                    ${itemsList}
+                                </div>
+                                <p style="color: #ef4444; font-weight: 600;">
+                                    คุณแน่ใจหรือไม่ว่าสินค้าเหล่านี้เหลือ 0 จริงๆ?
+                                </p>
+                            </div>
+                        `,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3B82F6',
+                        cancelButtonColor: '#6B7280',
+                        confirmButtonText: 'ใช่, ยืนยันการบันทึก',
+                        cancelButtonText: 'ยกเลิก',
+                        customClass: {
+                            popup: 'swal-wide'
+                        }
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            this.confirmAndSave(countsToSubmit);
+                        }
+                    });
+                } else {
+                    this.confirmAndSave(countsToSubmit);
+                }
+            },
+
+            confirmAndSave(countsToSubmit) {
+                Swal.fire({
+                    title: 'ยืนยันการบันทึก',
+                    text: `คุณต้องการบันทึกการนับสต๊อกทั้งหมด ${countsToSubmit.length} รายการใช่หรือไม่?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#10B981',
+                    cancelButtonColor: '#6B7280',
+                    confirmButtonText: 'ยืนยันบันทึก',
+                    cancelButtonText: 'ยกเลิก'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: 'กำลังบันทึก...',
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading()
+                        });
+
+                        google.script.run
+                            .withSuccessHandler(response => {
+                                Swal.close();
+                                if (response.success) {
+                                    Swal.fire({
+                                        title: 'สำเร็จ!',
+                                        text: 'บันทึกการนับสต๊อกเรียบร้อย',
+                                        icon: 'success',
+                                        confirmButtonColor: '#10B981'
+                                    });
+                                    this.isCounting = false;
+                                    this.checkCountStatus();
+                                } else {
+                                    Swal.fire('ผิดพลาด', response.message, 'error');
+                                }
+                            })
+                            .withFailureHandler(err => {
+                                Swal.fire('ผิดพลาดรุนแรง', err.message, 'error');
+                            })
+                            .submitManualCount(this.sheetId, this.date, countsToSubmit, this.user.username);
+                    }
+                });
+            }
+        }
+    }
+</script>
+</body>
+</html>

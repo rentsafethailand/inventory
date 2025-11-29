@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="th" x-data="{ isDarkMode: localStorage.getItem('isDarkMode') === 'true' }" :class="{ 'dark': isDarkMode }">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>อนุมัติรายการผลต่าง</title>
+    
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        /* (CSS ทั้งหมดเหมือนเดิม ไม่มีการเปลี่ยนแปลง) */
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap');
+        :root {
+            --light-bg: #F9FAFB; --light-card-bg: #FFFFFF; --light-border: #E5E7EB;
+            --light-text-primary: #1F2937; --light-text-secondary: #6B7280; --light-icon-bg: #E0F2FE;
+            --dark-bg: #111827; --dark-card-bg: #1F2937; --dark-border: #374151;
+            --dark-text-primary: #F9FAFB; --dark-text-secondary: #9CA3AF; --dark-icon-bg: #1E3A8A;
+            --accent-blue: #3B82F6; --accent-yellow: #F59E0B; --accent-red: #EF4444; --accent-green: #10B981;
+        }
+        body { font-family: 'Sarabun', sans-serif; margin: 0; padding: 1rem 1rem 8rem 1rem; transition: background-color 0.3s, color 0.3s; }
+        .dark body { background-color: var(--dark-bg); color: var(--dark-text-primary); }
+        body { background-color: var(--light-bg); color: var(--light-text-primary); }
+        .main-container { max-width: 800px; margin: 0 auto; }
+        main { display: flex; flex-direction: column; gap: 1.5rem; margin-top: 1.5rem; }
+        [x-cloak] { display: none !important; }
+
+        /* --- START: CSS เพิ่มเติมสำหรับ Summary Cards --- */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        @media (min-width: 768px) {
+            .summary-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+        .summary-card {
+            padding: 1.25rem 1rem;
+            text-align: center;
+            border-radius: 0.75rem;
+            background-color: var(--light-card-bg);
+            border: 1px solid var(--light-border);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+        }
+        .dark .summary-card {
+            background-color: var(--dark-card-bg);
+            border-color: var(--dark-border);
+        }
+        .summary-card .value { font-size: 2rem; font-weight: 700; line-height: 1; margin-bottom: 0.25rem; }
+        .summary-card .label { font-size: 0.8rem; color: var(--light-text-secondary); }
+        .dark .summary-card .label { color: var(--dark-text-secondary); }
+        /* --- END: CSS เพิ่มเติม --- */
+
+        .bulk-actions-container { position: sticky; bottom: 0; background: linear-gradient(to top, var(--light-bg) 70%, transparent); padding: 1.5rem 1rem 1rem 1rem; margin: 1.5rem -1rem -1rem -1rem; border-top: 1px solid var(--light-border); z-index: 5; }
+        .dark .bulk-actions-container { background: linear-gradient(to top, var(--dark-bg) 70%, transparent); border-top-color: var(--dark-border); }
+        .bulk-actions-box { max-width: 800px; margin: 0 auto; background-color: var(--light-card-bg); border-radius: 0.75rem; padding: 1rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 -10px 25px -5px rgba(0,0,0,0.1); }
+        .dark .bulk-actions-box { background-color: var(--dark-card-bg); }
+        .item-card.selected { border-left-color: var(--accent-blue); box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); transform: scale(1.01); }
+        .page-header { text-align: center; }
+        .page-header .icon-wrapper { width: 60px; height: 60px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1rem; background-color: var(--light-icon-bg); color: var(--accent-blue); }
+        .dark .page-header .icon-wrapper { background-color: var(--dark-icon-bg); }
+        .page-header h1 { font-size: 1.75rem; font-weight: 700; margin: 0; }
+        .info-badge { display: inline-block; margin-top: 0.5rem; padding: 0.5rem 1rem; border-radius: 9999px; border: 1px solid var(--accent-blue); background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05)); }
+        .dark .info-badge { border-color: var(--accent-blue); background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.08)); }
+        .info-badge p { margin: 0; font-size: 0.95rem; font-weight: 600; color: var(--accent-blue); }
+        .dark .info-badge p { color: #60A5FA; }
+        .theme-toggle { position: absolute; top: 1rem; right: 1rem; cursor: pointer; padding: 0.5rem; border-radius: 9999px; background-color: var(--light-card-bg); border: 1px solid var(--light-border); color: var(--light-text-secondary); }
+        .dark .theme-toggle { background-color: var(--dark-card-bg); border-color: var(--dark-border); color: var(--dark-text-secondary); }
+        .section-card { background-color: var(--light-card-bg); border: 1px solid var(--light-border); border-radius: 0.75rem; overflow: hidden; }
+        .dark .section-card { background-color: var(--dark-card-bg); border-color: var(--dark-border); }
+        .section-card-header { padding: 0.75rem 1rem; border-bottom: 1px solid var(--light-border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .dark .section-card-header { border-color: var(--dark-border); }
+        .section-card-header h2 { font-size: 1.125rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 0.5rem; }
+        .section-card-content { padding: 0; }
+        .item-list { display: flex; flex-direction: column; }
+        .item-card { border-bottom: 1px solid var(--light-border); padding: 1rem; display: flex; gap: 1rem; align-items: flex-start; border-left: 4px solid transparent; transition: all 0.2s; }
+        .dark .item-card { border-bottom-color: var(--dark-border); }
+        .item-card:last-child { border-bottom: none; }
+        .item-details { flex-grow: 1; }
+        .item-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .item-info .name { font-weight: 600; font-size: 1.05rem; }
+        .item-info .code { font-size: 0.8rem; color: var(--light-text-secondary); }
+        .dark .item-info .code { color: var(--dark-text-secondary); }
+        .item-diff { text-align: right; flex-shrink: 0; padding-left: 1rem; font-size: 0.8rem; color: var(--light-text-secondary); }
+        .dark .item-diff { color: var(--dark-text-secondary); }
+        .item-diff .diff-row { display: flex; justify-content: space-between; gap: 0.75rem; min-width: 120px; }
+        .item-diff .diff-row-total { font-weight: 700; font-size: 0.9rem; margin-top: 0.25rem; padding-top: 0.25rem; border-top: 1px solid var(--light-border); }
+        .dark .item-diff .diff-row-total { border-color: var(--dark-border); }
+        .pos-value { color: var(--accent-green) !important; }
+        .neg-value { color: var(--accent-red) !important; }
+        .item-explanation { font-size: 0.9rem; padding: 0.75rem; margin-top: 0.75rem; border-radius: 0.375rem; background-color: var(--light-bg); border-left: 3px solid var(--accent-yellow); }
+        .dark .item-explanation { background-color: var(--dark-bg); }
+        .btn { padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600; border: none; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem; }
+        .btn-success { background-color: var(--accent-green); color: white; }
+        .btn-success:hover { background-color: #059669; }
+        .btn-danger { background-color: var(--accent-red); color: white; }
+        .btn-danger:hover { background-color: #DC2626; }
+        .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5rem; z-index: 9999; }
+        .dark .loading-overlay { background-color: rgba(17, 24, 39, 0.95); }
+        .loading-spinner { font-size: 3rem; color: var(--accent-blue); animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .loading-text { font-size: 1.125rem; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div x-data="approvalApp()" x-init="init()" data-store-id="<?= storeId ?>" data-date="<?= date ?>" class="main-container" x-cloak>
+        
+        <div x-show="loading" class="loading-overlay">
+            <i class="fa-solid fa-spinner loading-spinner"></i>
+            <p class="loading-text">กำลังโหลดข้อมูล...</p>
+        </div>
+
+        <template x-if="!loading && !isAuthorized">
+             <div style="text-align: center; padding: 2rem;">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size: 3rem; color: var(--accent-red); margin-bottom: 1rem;"></i>
+                <h2 style="font-size: 1.5rem; font-weight: 700;">ไม่ได้รับอนุญาต</h2>
+                <p style="color: var(--light-text-secondary);">คุณไม่มีสิทธิ์เข้าถึงหน้านี้</p>
+            </div>
+        </template>
+
+        <template x-if="isAuthorized && !loading">
+            <div>
+                <button @click="isDarkMode = !isDarkMode; localStorage.setItem('isDarkMode', isDarkMode)" class="theme-toggle">
+                    <i :class="isDarkMode ? 'fa-solid fa-sun' : 'fa-solid fa-moon'"></i>
+                </button>
+                
+                <header class="page-header">
+                    <div class="icon-wrapper"><i class="fa-solid fa-gavel fa-xl"></i></div>
+                    <h1>อนุมัติรายการผลต่าง</h1>
+                    <div class="info-badge">
+                        <p x-text="`สาขา: ${storeName} | วันที่: ${formattedDate}`"></p>
+                    </div>
+                </header>
+
+                <main>
+                    <section class="summary-grid">
+                        <div class="summary-card">
+                            <div class="value" style="color: var(--light-text-primary);" x-text="summary.total"></div>
+                            <div class="label">รายการทั้งหมด</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="value" style="color: var(--accent-red);" x-text="summary.missing"></div>
+                            <div class="label">รายการขาดหาย</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="value" style="color: var(--accent-green);" x-text="summary.excess"></div>
+                            <div class="label">รายการเกิน</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="value" :class="{'neg-value': summary.netDifference < 0, 'pos-value': summary.netDifference > 0}" x-text="summary.netDifference.toFixed(2)"></div>
+                            <div class="label">ผลต่างรวม</div>
+                        </div>
+                    </section>
+                    <section x-show="pendingApprovalItems.length > 0" class="section-card">
+                        <div class="section-card-header">
+                            <h2><i class="fa-solid fa-hourglass-half" style="color: var(--accent-yellow);"></i> รายการรออนุมัติ <span x-text="`(${pendingApprovalItems.length})`"></span></h2>
+                        </div>
+                        <div class="section-card-content">
+                            <div style="padding-bottom: 0.5rem; border-bottom: 1px solid var(--light-border);"> 
+                                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem;">
+                                    <input type="checkbox" @change="toggleSelectAll($event.target.checked)">
+                                    <span>เลือกทั้งหมด</span>
+                                </label>
+                            </div>
+                            <div class="item-list">
+                                <template x-for="item in pendingApprovalItems" :key="item.comp_id">
+                                    <div class="item-card" :class="{ 'selected': item.selected }">
+                                        <input type="checkbox" x-model="item.selected" style="margin-top: 0.25rem;">
+                                        <div class="item-details">
+                                            <div class="item-header">
+                                                <div class="item-info">
+                                                    <div class="name" x-text="item.product_name"></div>
+                                                    <div class="code" x-text="item.product_code"></div>
+                                                </div>
+                                                <div class="item-diff">
+                                                    <div class="diff-row"><span>POS:</span><span x-text="item.pos_quantity.toFixed(2)"></span></div>
+                                                    <div class="diff-row"><span>นับได้:</span><span x-text="item.manual_quantity.toFixed(2)"></span></div>
+                                                    <div class="diff-row diff-row-total" :class="{'pos-value': item.difference > 0, 'neg-value': item.difference < 0}">
+                                                        <span>ผลต่าง:</span><span x-text="(item.difference > 0 ? '+' : '') + item.difference.toFixed(2)"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="item-explanation" x-text="item.explanation || 'ไม่มีคำชี้แจง'"></div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div x-show="pendingApprovalItems.length === 0 && items.length > 0" style="text-align: center; padding: 2rem; background-color: var(--light-card-bg); border-radius: 0.75rem;">
+                        <i class="fa-solid fa-check-double" style="font-size: 2rem; color: var(--accent-green); margin-bottom: 1rem;"></i>
+                        <p style="font-weight: 600;">ไม่พบรายการที่รอการอนุมัติ</p>
+                    </div>
+                </main>
+
+                <div x-show="selectedItemCount > 0" x-transition class="bulk-actions-container">
+                    <div class="bulk-actions-box">
+                        <span style="font-weight: 600;" x-text="`เลือก ${selectedItemCount} รายการ`"></span>
+                        <div style="display: flex; gap: 0.75rem;">
+                            <button @click="processSelected('approved')" class="btn btn-success"><i class="fa-solid fa-check-double"></i> อนุมัติ</button>
+                            <button @click="processSelected('rejected')" class="btn btn-danger"><i class="fa-solid fa-times"></i> ปฏิเสธ</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+<script>
+    function approvalApp() {
+        return {
+            loading: true,
+            error: null,
+            isAuthorized: false,
+            user: null,
+            storeId: null,
+            sheetId: null,
+            storeName: '',
+            date: null,
+            formattedDate: '',
+            items: [],
+
+            // --- START: ส่วนที่แก้ไขและเพิ่มเติม ---
+            get summary() {
+                const pending = this.pendingApprovalItems;
+                if (pending.length === 0) {
+                    return { total: 0, missing: 0, excess: 0, netDifference: 0 };
+                }
+                const missing = pending.filter(i => i.difference < 0).length;
+                const excess = pending.filter(i => i.difference > 0).length;
+                const netDifference = pending.reduce((sum, i) => sum + i.difference, 0);
+                return {
+                    total: pending.length,
+                    missing: missing,
+                    excess: excess,
+                    netDifference: netDifference
+                };
+            },
+            // --- END: สิ้นสุดส่วนแก้ไข ---
+
+            get pendingApprovalItems() {
+                return this.items.filter(i => (i.approval_status === 'pending' || !i.approval_status));
+            },
+            get selectedItemCount() {
+                return this.items.filter(i => i.selected).length;
+            },
+            
+            init() {
+                this.storeId = this.$el.dataset.storeId;
+                this.date = this.$el.dataset.date;
+                if (!this.storeId || !this.date) {
+                    this.error = 'ข้อมูลไม่ครบถ้วน (ไม่พบรหัสสาขาหรือวันที่)';
+                    this.loading = false;
+                    return;
+                }
+                const dateParts = this.date.split('-');
+                this.formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+                const session = localStorage.getItem('stockCountSession');
+                if (session) {
+                    this.user = JSON.parse(session);
+                    this.authorizeAndFetch();
+                } else {
+                    this.isAuthorized = false;
+                    this.loading = false;
+                }
+            },
+
+            authorizeAndFetch() {
+                if (this.user && this.user.stores && this.user.stores.some(s => s.store_id === this.storeId)) {
+                    this.isAuthorized = true;
+                    this.fetchData();
+                } else {
+                    this.isAuthorized = false;
+                    this.loading = false;
+                }
+            },
+
+            fetchData() {
+                this.loading = true;
+                google.script.run
+                    .withSuccessHandler(response => {
+                        if (response.success) {
+                            this.storeName = response.data.storeName;
+                            this.sheetId = response.data.sheetId;
+                            this.items = response.data.items.map(item => ({ ...item, selected: false }));
+                        } else { this.error = response.message; }
+                        this.loading = false;
+                    })
+                    .withFailureHandler(err => {
+                        this.error = 'เกิดข้อผิดพลาดในการเชื่อมต่อ';
+                        this.loading = false;
+                    })
+                    .getApprovalData(this.storeId, this.date);
+            },
+            
+            toggleSelectAll(checked) {
+                this.items.forEach(item => {
+                    if (this.pendingApprovalItems.includes(item)) {
+                        item.selected = checked;
+                    }
+                });
+            },
+
+            processSelected(status) {
+                const selectedItems = this.items.filter(item => item.selected);
+                if (selectedItems.length === 0) {
+                    Swal.fire('ไม่ได้เลือกรายการ', 'กรุณาเลือกอย่างน้อย 1 รายการ', 'info');
+                    return;
+                }
+
+                const title = status === 'approved' ? 'ยืนยันการอนุมัติ' : 'ยืนยันการปฏิเสธ';
+                const confirmButtonText = status === 'approved' ? 'อนุมัติ' : 'ปฏิเสธ';
+                const inputLabel = status === 'approved' ? 'เหตุผล (ถ้ามี)' : 'เหตุผลที่ปฏิเสธ (บังคับ)';
+
+                Swal.fire({
+                    title: `${title} ${selectedItems.length} รายการ?`,
+                    input: 'textarea',
+                    inputLabel: inputLabel,
+                    inputPlaceholder: 'กรอกเหตุผลที่นี่...',
+                    showCancelButton: true,
+                    confirmButtonText: confirmButtonText,
+                    cancelButtonText: 'ยกเลิก',
+                    preConfirm: (reason) => {
+                        if (status === 'rejected' && !reason) {
+                            Swal.showValidationMessage('กรุณาระบุเหตุผลที่ปฏิเสธ');
+                        }
+                        return reason;
+                    }
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        this.loading = true;
+                        const compIds = selectedItems.map(item => item.comp_id);
+                        const reason = result.value || '';
+                        const backendFunction = status === 'approved' ? 'approvePartialItems' : 'rejectPartialItems';
+                        
+                        google.script.run
+                            .withSuccessHandler(response => {
+                                if (response.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'สำเร็จ!',
+                                        text: response.message,
+                                        timer: 2000,
+                                        showConfirmButton: false
+                                    }).then(() => {
+                                        this.fetchData(); // โหลดข้อมูลใหม่
+                                    });
+                                } else {
+                                    Swal.fire('ผิดพลาด', response.message, 'error');
+                                }
+                                this.loading = false;
+                            })
+                            .withFailureHandler(err => {
+                                Swal.fire('เกิดข้อผิดพลาดร้ายแรง', err.message, 'error');
+                                this.loading = false;
+                            })
+                            [backendFunction](this.sheetId, this.date, compIds, this.user.username, reason);
+                    }
+                });
+            },
+        }
+    }
+</script>
+</body>
+</html>

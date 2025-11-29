@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ใบรับฝากเหล้า</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        /* Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Paper sizes */
+        @media print {
+            @page {
+                margin: 0;
+            }
+            body {
+                margin: 0;
+            }
+        }
+
+        body {
+            font-family: 'Sarabun', 'TH SarabunPSK', Arial, sans-serif;
+            line-height: 1.4;
+        }
+
+        /* 80mm width (default) */
+        .receipt-80mm {
+            width: 80mm;
+            margin: 0 auto;
+            padding: 8mm 4mm;
+            background: white;
+        }
+
+        /* 58mm width */
+        .receipt-58mm {
+            width: 58mm;
+            margin: 0 auto;
+            padding: 6mm 3mm;
+            background: white;
+        }
+
+        /* Common styles */
+        .receipt-header {
+            text-align: center;
+            margin-bottom: 4mm;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 3mm;
+        }
+
+        .store-logo {
+            max-width: 40mm;
+            max-height: 20mm;
+            margin: 0 auto 2mm;
+            display: block;
+        }
+
+        .store-name {
+            font-size: 16pt;
+            font-weight: bold;
+            margin-bottom: 1mm;
+        }
+
+        .store-info {
+            font-size: 9pt;
+            color: #333;
+            margin-bottom: 0.5mm;
+        }
+
+        .receipt-title {
+            font-size: 14pt;
+            font-weight: bold;
+            margin: 3mm 0;
+            text-align: center;
+            text-decoration: underline;
+        }
+
+        .deposit-id {
+            font-size: 18pt;
+            font-weight: bold;
+            text-align: center;
+            margin: 3mm 0;
+            padding: 2mm;
+            background: #f0f0f0;
+            border: 2px solid #000;
+        }
+
+        .qr-section {
+            text-align: center;
+            margin: 4mm 0;
+            padding: 3mm 0;
+            border-top: 1px dashed #000;
+            border-bottom: 1px dashed #000;
+        }
+
+        .qr-code {
+            margin: 2mm auto;
+        }
+
+        .qr-code img {
+            display: block;
+            margin: 0 auto;
+        }
+
+        .qr-text {
+            font-size: 8pt;
+            margin-top: 2mm;
+            color: #666;
+        }
+
+        .info-section {
+            margin: 3mm 0;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1.5mm;
+            font-size: 10pt;
+        }
+
+        .info-label {
+            font-weight: bold;
+            min-width: 30%;
+        }
+
+        .info-value {
+            text-align: right;
+            flex: 1;
+        }
+
+        .terms-section {
+            margin-top: 4mm;
+            padding-top: 3mm;
+            border-top: 1px dashed #000;
+            font-size: 8pt;
+            color: #666;
+        }
+
+        .terms-title {
+            font-weight: bold;
+            margin-bottom: 1mm;
+            color: #000;
+        }
+
+        .terms-list {
+            margin-left: 4mm;
+            list-style: none;
+        }
+
+        .terms-list li {
+            margin-bottom: 1mm;
+        }
+
+        .terms-list li:before {
+            content: "• ";
+            font-weight: bold;
+        }
+
+        .signature-section {
+            margin-top: 5mm;
+            padding-top: 3mm;
+            border-top: 1px solid #000;
+        }
+
+        .signature-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2mm;
+            font-size: 9pt;
+        }
+
+        .signature-box {
+            width: 45%;
+            text-align: center;
+        }
+
+        .signature-line {
+            border-top: 1px dotted #000;
+            margin-top: 8mm;
+            padding-top: 1mm;
+            font-size: 8pt;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 4mm;
+            padding-top: 2mm;
+            border-top: 1px dashed #000;
+            font-size: 7pt;
+            color: #999;
+        }
+
+        /* 58mm specific adjustments */
+        .receipt-58mm .store-name { font-size: 14pt; }
+        .receipt-58mm .store-info { font-size: 8pt; }
+        .receipt-58mm .receipt-title { font-size: 12pt; }
+        .receipt-58mm .deposit-id { font-size: 16pt; }
+        .receipt-58mm .info-row { font-size: 9pt; }
+        .receipt-58mm .qr-code img { max-width: 25mm; }
+
+        /* Action Buttons (hide when printing) */
+        .action-buttons {
+            text-align: center;
+            margin: 10px 0;
+            padding: 10px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            color: white;
+        }
+
+        .btn-print {
+            background-color: #6366f1;
+        }
+
+        .btn-print:hover {
+            background-color: #4f46e5;
+        }
+
+        .btn-pdf {
+            background-color: #10b981;
+        }
+
+        .btn-pdf:hover {
+            background-color: #059669;
+        }
+
+        @media print {
+            .action-buttons {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Action Buttons -->
+    <div class="action-buttons" id="actionButtons">
+        <button class="btn btn-print" onclick="window.print()">
+            🖨️ พิมพ์
+        </button>
+        <button class="btn btn-pdf" onclick="downloadPDF()">
+            📄 ดาวน์โหลด PDF
+        </button>
+    </div>
+
+    <div id="receipt" class="receipt-80mm">
+        <!-- Header -->
+        <div class="receipt-header">
+            <img id="store-logo" class="store-logo" src="" alt="Logo" style="display: none;">
+            <div id="store-name" class="store-name"></div>
+            <div id="store-address" class="store-info"></div>
+            <div id="store-phone" class="store-info"></div>
+        </div>
+
+        <!-- Title -->
+        <div class="receipt-title">ใบรับฝากเหล้า</div>
+
+        <!-- Deposit ID -->
+        <div id="deposit-id" class="deposit-id"></div>
+
+        <!-- Customer Info -->
+        <div class="info-section">
+            <div class="info-row">
+                <span class="info-label">ชื่อลูกค้า:</span>
+                <span id="customer-name" class="info-value"></span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">เบอร์โทร:</span>
+                <span id="customer-phone" class="info-value"></span>
+            </div>
+        </div>
+
+        <!-- Alcohol Info -->
+        <div class="info-section">
+            <div class="info-row">
+                <span class="info-label">ประเภทเหล้า:</span>
+                <span id="alcohol-type" class="info-value"></span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">จำนวน:</span>
+                <span id="quantity" class="info-value"></span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">หมายเหตุ:</span>
+                <span id="notes" class="info-value"></span>
+            </div>
+        </div>
+
+        <!-- Date Info -->
+        <div class="info-section">
+            <div class="info-row">
+                <span class="info-label">วันที่ฝาก:</span>
+                <span id="deposit-date" class="info-value"></span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">วันหมดอายุ:</span>
+                <span id="expiry-date" class="info-value"></span>
+            </div>
+        </div>
+
+        <!-- QR Code Section -->
+        <div id="qr-section" class="qr-section">
+            <div class="qr-code">
+                <img id="qr-image" src="" alt="QR Code">
+            </div>
+            <div class="qr-text">สแกน QR Code เพื่อขอเบิกเหล้า</div>
+            <div class="qr-text" style="margin-top: 1mm;">
+                หรือ Add Friend: <span id="line-id"></span>
+            </div>
+        </div>
+
+        <!-- Staff Info -->
+        <div class="info-section">
+            <div class="info-row">
+                <span class="info-label">ผู้รับฝาก:</span>
+                <span id="received-by" class="info-value"></span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">ผู้ยืนยัน:</span>
+                <span id="confirmed-by" class="info-value"></span>
+            </div>
+        </div>
+
+        <!-- Terms & Conditions -->
+        <div class="terms-section">
+            <div class="terms-title">เงื่อนไขการฝาก:</div>
+            <ul class="terms-list">
+                <li>ใบรับนี้มีอายุ 30 วัน นับจากวันที่ฝาก</li>
+                <li>กรุณานำใบรับมาแสดงเมื่อขอเบิกเหล้า</li>
+                <li>ทางร้านไม่รับผิดชอบกรณีเหล้าหาย แตก หรือเสียหาย</li>
+                <li>หากเกิน 30 วัน ทางร้านขอสงวนสิทธิ์ในการกำจัดทิ้ง</li>
+            </ul>
+        </div>
+
+        <!-- Signature Section -->
+        <div class="signature-section">
+            <div class="signature-row">
+                <div class="signature-box">
+                    <div>ผู้ฝาก</div>
+                    <div class="signature-line">__________________</div>
+                </div>
+                <div class="signature-box">
+                    <div>ผู้รับฝาก</div>
+                    <div class="signature-line">__________________</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div>*** กรุณาเก็บใบรับนี้ไว้เป็นหลักฐาน ***</div>
+            <div style="margin-top: 1mm;">พิมพ์เมื่อ: <span id="print-datetime"></span></div>
+        </div>
+    </div>
+
+    <script>
+        // This script will be populated by the backend when generating the receipt
+        function populateReceipt(data) {
+            // Set paper size
+            const receiptEl = document.getElementById('receipt');
+            receiptEl.className = data.paperSize === '58mm' ? 'receipt-58mm' : 'receipt-80mm';
+
+            // Store info
+            if (data.storeLogo) {
+                document.getElementById('store-logo').src = data.storeLogo;
+                document.getElementById('store-logo').style.display = 'block';
+            }
+            document.getElementById('store-name').textContent = data.storeName;
+            document.getElementById('store-address').textContent = data.storeAddress;
+            document.getElementById('store-phone').textContent = 'โทร: ' + data.storePhone;
+
+            // Deposit ID
+            document.getElementById('deposit-id').textContent = 'รหัสฝาก: ' + data.depositId;
+
+            // Customer info
+            document.getElementById('customer-name').textContent = data.customerName;
+            document.getElementById('customer-phone').textContent = data.customerPhone;
+
+            // Alcohol info
+            document.getElementById('alcohol-type').textContent = data.alcoholType;
+            document.getElementById('quantity').textContent = data.quantity + ' ขวด';
+            document.getElementById('notes').textContent = data.notes || '-';
+
+            // Dates
+            document.getElementById('deposit-date').textContent = data.depositDate;
+            document.getElementById('expiry-date').textContent = data.expiryDate;
+
+            // QR Code
+            if (data.qrCodeUrl) {
+                const qrSize = data.paperSize === '58mm' ? '100' : '150';
+                document.getElementById('qr-image').src = data.qrCodeUrl;
+                document.getElementById('qr-image').width = qrSize;
+                document.getElementById('qr-image').height = qrSize;
+            } else if (data.lineAddFriendUrl) {
+                // Fallback: Generate QR Code using Google Charts API
+                const qrSize = data.paperSize === '58mm' ? '100' : '150';
+                const qrUrl = `https://chart.googleapis.com/chart?chs=${qrSize}x${qrSize}&cht=qr&chl=${encodeURIComponent(data.lineAddFriendUrl)}`;
+                document.getElementById('qr-image').src = qrUrl;
+                document.getElementById('qr-image').width = qrSize;
+                document.getElementById('qr-image').height = qrSize;
+            } else {
+                // No QR Code available
+                document.getElementById('qr-section').style.display = 'none';
+            }
+
+            document.getElementById('line-id').textContent = data.lineId || '';
+
+            // Staff info
+            document.getElementById('received-by').textContent = data.receivedBy || '-';
+            document.getElementById('confirmed-by').textContent = data.confirmedBy || '-';
+
+            // Print datetime
+            const now = new Date();
+            const dateTimeStr = now.toLocaleString('th-TH', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            document.getElementById('print-datetime').textContent = dateTimeStr;
+
+            // Auto-print after rendering (optional)
+            if (data.autoPrint) {
+                setTimeout(() => {
+                    window.print();
+                }, 500);
+            }
+        }
+
+        // Download PDF
+        function downloadPDF() {
+            const element = document.getElementById('receipt');
+            const depositId = document.getElementById('deposit-id').textContent.replace('รหัสฝาก: ', '');
+            const filename = `ใบรับฝากเหล้า_${depositId}_${new Date().getTime()}.pdf`;
+
+            const opt = {
+                margin: 5,
+                filename: filename,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // Listen for messages from parent window
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'POPULATE_RECEIPT') {
+                populateReceipt(event.data.data);
+            }
+        });
+    </script>
+</body>
+</html>
