@@ -10445,13 +10445,11 @@ function createTransferRequest(storeId, depositIds, note, createdBy, photoUrl) {
     let transferSheet = storeSS.getSheetByName('Transfer_Requests');
     if (!transferSheet) {
       transferSheet = storeSS.insertSheet('Transfer_Requests');
-      // Headers ตาม design doc
+      // Headers ตาม setupDepositSystemSheets
       transferSheet.appendRow([
-        'transfer_id', 'transfer_code', 'from_store_id', 'deposit_ids',
-        'total_items', 'total_quantity', 'transfer_date', 'photo_url',
-        'created_by', 'status', 'notes', 'confirm_date', 'confirm_photo_url',
-        'confirmed_by', 'received_from', 'received_qty', 'received_percent',
-        'cancel_reason', 'cancelled_by', 'cancelled_at'
+        'transfer_id', 'transfer_code', 'from_store_id', 'deposit_ids', 'total_items',
+        'transfer_date', 'confirm_date', 'photo_url', 'confirm_photo_url',
+        'status', 'notes', 'confirmed_by', 'created_by', 'created_at'
       ]);
     }
 
@@ -10479,28 +10477,22 @@ function createTransferRequest(storeId, depositIds, note, createdBy, photoUrl) {
       }
     }
 
-    // บันทึก transfer request
+    // บันทึก transfer request (ตาม format ของ setupDepositSystemSheets)
     transferSheet.appendRow([
       transferId,                    // transfer_id
       transferCode,                  // transfer_code
       storeId,                       // from_store_id
       JSON.stringify(depositIds),    // deposit_ids
       depositIds.length,             // total_items
-      totalQuantity,                 // total_quantity
       new Date(),                    // transfer_date
+      '',                            // confirm_date
       photoUrl || '',                // photo_url
-      createdBy || '',               // created_by
+      '',                            // confirm_photo_url
       'pending',                     // status
       note || '',                    // notes
-      '',                            // confirm_date
-      '',                            // confirm_photo_url
       '',                            // confirmed_by
-      '',                            // received_from
-      '',                            // received_qty
-      '',                            // received_percent
-      '',                            // cancel_reason
-      '',                            // cancelled_by
-      ''                             // cancelled_at
+      createdBy || '',               // created_by
+      new Date()                     // created_at
     ]);
 
     // อัพเดทสถานะ deposits เป็น 'transfer_pending'
