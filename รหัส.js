@@ -10046,27 +10046,37 @@ function getHQConfirmedTransfers() {
 
         const transferIdCol = headers.indexOf('transfer_id');
         const transferCodeCol = headers.indexOf('transfer_code');
+        const depositIdsCol = headers.indexOf('deposit_ids');
         const totalItemsCol = headers.indexOf('total_items');
         const totalQtyCol = headers.indexOf('total_quantity');
         const transferDateCol = headers.indexOf('transfer_date');
         const confirmedDateCol = headers.indexOf('confirmed_date');
         const statusCol = headers.indexOf('status');
+        const notesCol = headers.indexOf('notes');
+        const photoUrlCol = headers.indexOf('photo_url');
 
         for (let j = 1; j < transferData.length; j++) {
           const tRow = transferData[j];
           if (tRow[statusCol] === 'confirmed') {
             const transferDate = tRow[transferDateCol];
             const confirmedDate = tRow[confirmedDateCol];
+            const depositIds = JSON.parse(tRow[depositIdsCol] || '[]');
+            const depositDetails = getDepositDetailsForTransfer(branchSheetId, depositIds);
 
             confirmedTransfers.push({
               transfer_id: String(tRow[transferIdCol] || ''),
               transfer_code: String(tRow[transferCodeCol] || ''),
               from_store_id: String(branchStoreId || ''),
               from_store_name: String(branchName || ''),
-              items_count: Number(tRow[totalItemsCol] || 0),
+              from_sheet_id: String(branchSheetId || ''),
+              items_count: Number(tRow[totalItemsCol] || depositIds.length),
               total_quantity: Number(tRow[totalQtyCol] || 0),
               transfer_date: transferDate instanceof Date ? transferDate.toISOString() : String(transferDate || ''),
-              confirmed_date: confirmedDate instanceof Date ? confirmedDate.toISOString() : String(confirmedDate || '')
+              confirmed_date: confirmedDate instanceof Date ? confirmedDate.toISOString() : String(confirmedDate || ''),
+              notes: String(tRow[notesCol] || ''),
+              photo_url: String(tRow[photoUrlCol] || ''),
+              deposit_ids: depositIds,
+              deposits: depositDetails
             });
           }
         }

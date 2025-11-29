@@ -1449,6 +1449,7 @@
             return {
                 activeTab: 'pending',
                 showConfirmModal: false,
+                showDetailModal: false,
                 selectedTransfer: null,
                 confirmNote: '',
                 processing: false,
@@ -1521,6 +1522,16 @@
                     this.showConfirmModal = false;
                     this.selectedTransfer = null;
                     this.confirmNote = '';
+                },
+
+                openDetailModal(transfer) {
+                    this.selectedTransfer = transfer;
+                    this.showDetailModal = true;
+                },
+
+                closeDetailModal() {
+                    this.showDetailModal = false;
+                    this.selectedTransfer = null;
                 },
 
                 confirmReceive() {
@@ -8941,15 +8952,20 @@
                                         <td class="px-4 py-3 text-sm whitespace-nowrap" x-text="formatDate(item.transfer_date)"></td>
                                         <td class="px-4 py-3 text-sm whitespace-nowrap" x-show="activeTab === 'confirmed'" x-text="formatDate(item.confirmed_date)"></td>
                                         <td class="px-4 py-3 text-center whitespace-nowrap" x-show="activeTab === 'pending'">
-                                            <button @click="openConfirmModal(item)" class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 mr-2">
+                                            <button @click="openDetailModal(item)" class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 mr-1">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button @click="openConfirmModal(item)" class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 mr-1">
                                                 <i class="fas fa-check"></i> รับ
                                             </button>
                                             <button @click="rejectTransfer(item)" class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">
-                                                <i class="fas fa-times"></i> ปฏิเสธ
+                                                <i class="fas fa-times"></i>
                                             </button>
                                         </td>
                                         <td class="px-4 py-3 text-center whitespace-nowrap" x-show="activeTab === 'confirmed'">
-                                            <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">รับแล้ว</span>
+                                            <button @click="openDetailModal(item)" class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 mr-1">
+                                                <i class="fas fa-eye"></i> ดู
+                                            </button>
                                         </td>
                                     </tr>
                                 </template>
@@ -8974,6 +8990,91 @@
                             <span x-show="!processing">ยืนยันรับ</span>
                             <span x-show="processing"><i class="fas fa-spinner fa-spin"></i> กำลังดำเนินการ...</span>
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detail Modal -->
+            <div x-show="showDetailModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" x-cloak>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold">รายละเอียดการโอน</h3>
+                        <button @click="closeDetailModal()" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+
+                    <!-- Transfer Info -->
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-4">
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span class="text-gray-500">รหัสโอน:</span>
+                                <span class="font-mono font-bold ml-2" x-text="selectedTransfer?.transfer_code"></span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">จากสาขา:</span>
+                                <span class="font-bold ml-2" x-text="selectedTransfer?.from_store_name"></span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">วันที่ส่ง:</span>
+                                <span class="ml-2" x-text="formatDate(selectedTransfer?.transfer_date)"></span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">จำนวน:</span>
+                                <span class="ml-2" x-text="(selectedTransfer?.items_count || 0) + ' รายการ (' + (selectedTransfer?.total_quantity || 0) + ' ขวด)'"></span>
+                            </div>
+                        </div>
+                        <template x-if="selectedTransfer?.notes">
+                            <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                                <span class="text-gray-500">หมายเหตุ:</span>
+                                <span class="ml-2" x-text="selectedTransfer?.notes"></span>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Photo -->
+                    <template x-if="selectedTransfer?.photo_url">
+                        <div class="mb-4">
+                            <h4 class="text-sm font-medium text-gray-500 mb-2">รูปถ่าย</h4>
+                            <img :src="selectedTransfer?.photo_url" class="max-w-full h-auto rounded-lg border max-h-64 object-contain" alt="Transfer Photo">
+                        </div>
+                    </template>
+
+                    <!-- Deposits List -->
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-500 mb-2">รายการของฝาก</h4>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                                <thead class="bg-gray-50 dark:bg-gray-700">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">รหัส</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">ชื่อลูกค้า</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">สินค้า</th>
+                                        <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">จำนวน</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                    <template x-for="dep in (selectedTransfer?.deposits || [])" :key="dep.deposit_id">
+                                        <tr>
+                                            <td class="px-3 py-2 font-mono" x-text="dep.deposit_code"></td>
+                                            <td class="px-3 py-2" x-text="dep.customer_name"></td>
+                                            <td class="px-3 py-2" x-text="dep.product_name"></td>
+                                            <td class="px-3 py-2 text-center" x-text="dep.quantity"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Footer Buttons -->
+                    <div class="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-600">
+                        <button @click="closeDetailModal()" class="px-4 py-2 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">ปิด</button>
+                        <template x-if="activeTab === 'pending'">
+                            <button @click="closeDetailModal(); openConfirmModal(selectedTransfer)" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                <i class="fas fa-check mr-2"></i>รับโอน
+                            </button>
+                        </template>
                     </div>
                 </div>
             </div>
