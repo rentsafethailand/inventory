@@ -251,6 +251,18 @@ function handleDepositSystemAPI(eventData) {
         result = getTransferConfirmedDeposits(eventData.storeId || data.storeId);
         break;
 
+      case 'getHQTransferSummary':
+        result = getHQTransferSummary();
+        break;
+
+      case 'getHQPendingTransfers':
+        result = getHQPendingTransfers();
+        break;
+
+      case 'getHQConfirmedTransfers':
+        result = getHQConfirmedTransfers();
+        break;
+
       case 'createTransferRequest':
         result = createTransferRequest(
           eventData.storeId || data.storeId,
@@ -9939,6 +9951,135 @@ function getBranchTransferSummary(storeId) {
     return { success: true, data: { expired, pending, confirmed } };
   } catch (error) {
     console.error('Error in getBranchTransferSummary:', error);
+    return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * นับจำนวน Transfer สำหรับ HQ (pending และ confirmed)
+ */
+function getHQTransferSummary() {
+  try {
+    const mainSS = SpreadsheetApp.openById(CONFIG.MASTER_SHEET_ID);
+    const storesSheet = mainSS.getSheetByName(CONFIG.MASTER_SHEETS.STORES);
+    const storesData = storesSheet.getDataRange().getValues();
+    const storeHeaders = storesData[0];
+
+    const sheetIdCol = storeHeaders.indexOf('sheet_id');
+    const isCentralCol = storeHeaders.indexOf('is_central');
+
+    let pending = 0, confirmed = 0;
+
+    for (let i = 1; i < storesData.length; i++) {
+      const row = storesData[i];
+      const branchSheetId = row[sheetIdCol];
+      const isCentral = row[isCentralCol] === true || String(row[isCentralCol]).toLowerCase() === 'true';
+
+      if (isCentral || !branchSheetId) continue;
+
+      try {
+        const branchSS = SpreadsheetApp.openById(branchSheetId);
+        const transferSheet = branchSS.getSheetByName('Transfer_Requests');
+        if (!transferSheet) continue;
+
+        const transferData = transferSheet.getDataRange().getValues();
+        const headers = transferData[0];
+        const statusCol = headers.indexOf('status');
+
+        for (let j = 1; j < transferData.length; j++) {
+          const status = transferData[j][statusCol];
+          if (status === 'pending') pending++;
+          else if (status === 'confirmed') confirmed++;
+        }
+      } catch (e) {
+        console.log('Error counting transfers:', e);
+      }
+    }
+
+    return { success: true, data: { pending, confirmed } };
+  } catch (error) {
+    console.error('Error in getHQTransferSummary:', error);
+    return { success: false, message: error.toString() };
+  }
+}
+
+/**
+ * ดึงรายการ Transfer ที่รอรับสำหรับ HQ
+ */
+function getHQPendingTransfers() {
+  return getPendingTransfersForHQ(null);
+}
+
+/**
+ * ดึงรายการ Transfer ที่รับแล้วสำหรับ HQ
+ */
+function getHQConfirmedTransfers() {
+  try {
+    const mainSS = SpreadsheetApp.openById(CONFIG.MASTER_SHEET_ID);
+    const storesSheet = mainSS.getSheetByName(CONFIG.MASTER_SHEETS.STORES);
+    const storesData = storesSheet.getDataRange().getValues();
+    const storeHeaders = storesData[0];
+
+    const storeIdCol = storeHeaders.indexOf('store_id');
+    const storeNameCol = storeHeaders.indexOf('store_name');
+    const sheetIdCol = storeHeaders.indexOf('sheet_id');
+    const isCentralCol = storeHeaders.indexOf('is_central');
+
+    const confirmedTransfers = [];
+
+    for (let i = 1; i < storesData.length; i++) {
+      const row = storesData[i];
+      const branchStoreId = row[storeIdCol];
+      const branchSheetId = row[sheetIdCol];
+      const branchName = row[storeNameCol];
+      const isCentral = row[isCentralCol] === true || String(row[isCentralCol]).toLowerCase() === 'true';
+
+      if (isCentral || !branchSheetId) continue;
+
+      try {
+        const branchSS = SpreadsheetApp.openById(branchSheetId);
+        const transferSheet = branchSS.getSheetByName('Transfer_Requests');
+        if (!transferSheet) continue;
+
+        const transferData = transferSheet.getDataRange().getValues();
+        const headers = transferData[0];
+
+        const transferIdCol = headers.indexOf('transfer_id');
+        const transferCodeCol = headers.indexOf('transfer_code');
+        const totalItemsCol = headers.indexOf('total_items');
+        const totalQtyCol = headers.indexOf('total_quantity');
+        const transferDateCol = headers.indexOf('transfer_date');
+        const confirmedDateCol = headers.indexOf('confirmed_date');
+        const statusCol = headers.indexOf('status');
+
+        for (let j = 1; j < transferData.length; j++) {
+          const tRow = transferData[j];
+          if (tRow[statusCol] === 'confirmed') {
+            const transferDate = tRow[transferDateCol];
+            const confirmedDate = tRow[confirmedDateCol];
+
+            confirmedTransfers.push({
+              transfer_id: String(tRow[transferIdCol] || ''),
+              transfer_code: String(tRow[transferCodeCol] || ''),
+              from_store_id: String(branchStoreId || ''),
+              from_store_name: String(branchName || ''),
+              items_count: Number(tRow[totalItemsCol] || 0),
+              total_quantity: Number(tRow[totalQtyCol] || 0),
+              transfer_date: transferDate instanceof Date ? transferDate.toISOString() : String(transferDate || ''),
+              confirmed_date: confirmedDate instanceof Date ? confirmedDate.toISOString() : String(confirmedDate || '')
+            });
+          }
+        }
+      } catch (e) {
+        console.log('Error reading branch ' + branchName + ': ' + e);
+      }
+    }
+
+    confirmedTransfers.sort((a, b) => new Date(b.confirmed_date) - new Date(a.confirmed_date));
+
+    return { success: true, data: confirmedTransfers };
+  } catch (error) {
+    console.error('Error in getHQConfirmedTransfers:', error);
     return { success: false, message: error.toString() };
   }
 }

@@ -1447,17 +1447,69 @@
         // HQ Transfer Component - สำหรับคลังกลางรับของจากสาขา
         function hqTransferData() {
             return {
+                activeTab: 'pending',
                 showConfirmModal: false,
                 selectedTransfer: null,
                 confirmNote: '',
                 processing: false,
+                loading: false,
+                summary: { pending: 0, confirmed: 0 },
+                pendingList: [],
+                confirmedList: [],
 
-                get pendingTransfers() {
-                    return Alpine.store('centralTransfer').pendingTransfers || [];
+                get currentList() {
+                    if (this.activeTab === 'pending') return this.pendingList;
+                    if (this.activeTab === 'confirmed') return this.confirmedList;
+                    return [];
                 },
 
-                get loading() {
-                    return Alpine.store('centralTransfer').loading;
+                formatDate(dateStr) {
+                    if (!dateStr) return '-';
+                    const d = new Date(dateStr);
+                    const day = d.getDate().toString().padStart(2, '0');
+                    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+                    const year = d.getFullYear() + 543;
+                    return day + '/' + month + '/' + year;
+                },
+
+                init() {
+                    this.loadSummary();
+                    this.loadTabData('pending');
+                },
+
+                loadSummary() {
+                    google.script.run
+                        .withSuccessHandler((result) => {
+                            if (result.success) {
+                                this.summary = result.data;
+                            }
+                        })
+                        .handleDepositSystemAPI({ action: 'getHQTransferSummary' });
+                },
+
+                loadTabData(tab) {
+                    this.loading = true;
+                    let action = '';
+                    if (tab === 'pending') action = 'getHQPendingTransfers';
+                    else if (tab === 'confirmed') action = 'getHQConfirmedTransfers';
+
+                    google.script.run
+                        .withSuccessHandler((result) => {
+                            if (result.success) {
+                                if (tab === 'pending') this.pendingList = result.data || [];
+                                else if (tab === 'confirmed') this.confirmedList = result.data || [];
+                            }
+                            this.loading = false;
+                        })
+                        .withFailureHandler(() => {
+                            this.loading = false;
+                        })
+                        .handleDepositSystemAPI({ action: action });
+                },
+
+                switchTab(tab) {
+                    this.activeTab = tab;
+                    this.loadTabData(tab);
                 },
 
                 openConfirmModal(transfer) {
@@ -1527,16 +1579,8 @@
                 },
 
                 reloadData() {
-                    const storeId = Alpine.store('app').user.currentStore;
-                    Alpine.store('centralTransfer').loading = true;
-                    google.script.run
-                        .withSuccessHandler((r) => {
-                            if (r.success) {
-                                Alpine.store('centralTransfer').pendingTransfers = r.data || [];
-                            }
-                            Alpine.store('centralTransfer').loading = false;
-                        })
-                        .handleDepositSystemAPI({ action: 'getPendingTransfers', storeId: storeId });
+                    this.loadSummary();
+                    this.loadTabData(this.activeTab);
                 }
             };
         }
@@ -8812,7 +8856,7 @@
                 // หน้าสำหรับ HQ - รับของจากสาขาอื่น
                 renderHQTransferPage() {
                     return `
-        <div class="space-y-6" x-data="hqTransferData()">
+        <div class="space-y-6" x-data="hqTransferData()" x-init="init()">
             <div class="bg-white dark:bg-gray-800 rounded-2xl glow-border p-8">
                 <div class="flex items-center space-x-4">
                     <div class="bg-purple-100 dark:bg-purple-900 p-4 rounded-xl">
@@ -8825,49 +8869,87 @@
                 </div>
             </div>
 
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-2 gap-4">
+                <div @click="switchTab('pending')" class="cursor-pointer bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-2 transition-all" :class="activeTab === 'pending' ? 'border-yellow-500' : 'border-transparent hover:border-gray-300'">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">รอรับ</p>
+                            <p class="text-2xl font-bold text-yellow-600" x-text="summary.pending"></p>
+                        </div>
+                        <i class="fas fa-clock text-3xl text-yellow-500"></i>
+                    </div>
+                </div>
+                <div @click="switchTab('confirmed')" class="cursor-pointer bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-2 transition-all" :class="activeTab === 'confirmed' ? 'border-green-500' : 'border-transparent hover:border-gray-300'">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">รับแล้ว</p>
+                            <p class="text-2xl font-bold text-green-600" x-text="summary.confirmed"></p>
+                        </div>
+                        <i class="fas fa-check-circle text-3xl text-green-500"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex space-x-2 border-b border-gray-200 dark:border-gray-700">
+                <button @click="switchTab('pending')" class="px-4 py-2 font-medium transition-colors" :class="activeTab === 'pending' ? 'text-yellow-600 border-b-2 border-yellow-600' : 'text-gray-500 hover:text-gray-700'">
+                    <i class="fas fa-clock mr-2"></i>รอรับ
+                </button>
+                <button @click="switchTab('confirmed')" class="px-4 py-2 font-medium transition-colors" :class="activeTab === 'confirmed' ? 'text-green-600 border-b-2 border-green-600' : 'text-gray-500 hover:text-gray-700'">
+                    <i class="fas fa-check-circle mr-2"></i>รับแล้ว
+                </button>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 overflow-hidden">
                 <template x-if="loading">
                     <div class="text-center py-8">
                         <i class="fas fa-spinner fa-spin text-4xl text-purple-500"></i>
                         <p class="mt-2 text-gray-600">กำลังโหลดข้อมูล...</p>
                     </div>
                 </template>
-                <template x-if="!loading && pendingTransfers.length === 0">
+                <template x-if="!loading && currentList.length === 0">
                     <div class="text-center py-8">
                         <i class="fas fa-inbox text-6xl text-gray-400 mb-4"></i>
-                        <h3 class="text-xl font-semibold mb-2">ไม่มีรายการรอรับ</h3>
-                        <p class="text-gray-600 dark:text-gray-400">ยังไม่มีรายการที่รอรับจากสาขาอื่นในขณะนี้</p>
+                        <h3 class="text-xl font-semibold mb-2" x-text="activeTab === 'pending' ? 'ไม่มีรายการรอรับ' : 'ไม่มีรายการที่รับแล้ว'"></h3>
+                        <p class="text-gray-600 dark:text-gray-400" x-text="activeTab === 'pending' ? 'ยังไม่มีรายการที่รอรับจากสาขาอื่นในขณะนี้' : 'ยังไม่มีรายการที่รับแล้ว'"></p>
                     </div>
                 </template>
-                <template x-if="!loading && pendingTransfers.length > 0">
+                <template x-if="!loading && currentList.length > 0">
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-700">
                                 <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">รหัสโอน</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">จากสาขา</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">รายการ</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">วันที่ส่ง</th>
-                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">จัดการ</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">รหัสโอน</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">จากสาขา</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">รายการ</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">วันที่ส่ง</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap" x-show="activeTab === 'confirmed'">วันที่รับ</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase whitespace-nowrap" x-show="activeTab === 'pending'">จัดการ</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase whitespace-nowrap" x-show="activeTab === 'confirmed'">สถานะ</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                <template x-for="item in pendingTransfers" :key="item.transfer_id">
+                                <template x-for="item in currentList" :key="item.transfer_id">
                                     <tr>
-                                        <td class="px-4 py-3 text-sm font-mono" x-text="item.transfer_code"></td>
-                                        <td class="px-4 py-3 text-sm" x-text="item.from_store_name"></td>
-                                        <td class="px-4 py-3 text-sm">
+                                        <td class="px-4 py-3 text-sm font-mono whitespace-nowrap" x-text="item.transfer_code"></td>
+                                        <td class="px-4 py-3 text-sm whitespace-nowrap" x-text="item.from_store_name"></td>
+                                        <td class="px-4 py-3 text-sm whitespace-nowrap">
                                             <span x-text="item.items_count + ' รายการ'"></span>
                                             <span class="text-gray-500">(<span x-text="item.total_quantity"></span> ขวด)</span>
                                         </td>
-                                        <td class="px-4 py-3 text-sm" x-text="item.transfer_date"></td>
-                                        <td class="px-4 py-3 text-center">
+                                        <td class="px-4 py-3 text-sm whitespace-nowrap" x-text="formatDate(item.transfer_date)"></td>
+                                        <td class="px-4 py-3 text-sm whitespace-nowrap" x-show="activeTab === 'confirmed'" x-text="formatDate(item.confirmed_date)"></td>
+                                        <td class="px-4 py-3 text-center whitespace-nowrap" x-show="activeTab === 'pending'">
                                             <button @click="openConfirmModal(item)" class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 mr-2">
                                                 <i class="fas fa-check"></i> รับ
                                             </button>
                                             <button @click="rejectTransfer(item)" class="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700">
                                                 <i class="fas fa-times"></i> ปฏิเสธ
                                             </button>
+                                        </td>
+                                        <td class="px-4 py-3 text-center whitespace-nowrap" x-show="activeTab === 'confirmed'">
+                                            <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">รับแล้ว</span>
                                         </td>
                                     </tr>
                                 </template>
