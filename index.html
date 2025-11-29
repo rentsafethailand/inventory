@@ -1279,21 +1279,82 @@
         // Branch Transfer Component - สำหรับสาขาปกติ
         function branchTransferData() {
             return {
+                activeTab: 'expired',
                 selectedItems: [],
                 showTransferModal: false,
                 transferNote: '',
+                createdBy: '',
+                photoPreview: null,
+                photoBase64: null,
                 submitting: false,
+                loading: false,
+                summary: { expired: 0, pending: 0, confirmed: 0 },
+                expiredList: [],
+                pendingList: [],
+                confirmedList: [],
 
-                get transfers() {
-                    return Alpine.store('centralTransfer').transfers || [];
-                },
-
-                get loading() {
-                    return Alpine.store('centralTransfer').loading;
+                get currentList() {
+                    if (this.activeTab === 'expired') return this.expiredList;
+                    if (this.activeTab === 'pending') return this.pendingList;
+                    if (this.activeTab === 'confirmed') return this.confirmedList;
+                    return [];
                 },
 
                 get selectedCount() {
                     return this.selectedItems.length;
+                },
+
+                formatDate(dateStr) {
+                    if (!dateStr) return '-';
+                    const d = new Date(dateStr);
+                    return d.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit' });
+                },
+
+                init() {
+                    this.loadSummary();
+                    this.loadTabData('expired');
+                },
+
+                loadSummary() {
+                    const storeId = Alpine.store('app').user.currentStore;
+                    google.script.run
+                        .withSuccessHandler((result) => {
+                            if (result.success) {
+                                this.summary = result.data;
+                            }
+                        })
+                        .handleDepositSystemAPI({ action: 'getBranchTransferSummary', storeId: storeId });
+                },
+
+                loadTabData(tab) {
+                    this.loading = true;
+                    this.selectedItems = [];
+                    const storeId = Alpine.store('app').user.currentStore;
+
+                    let action = '';
+                    if (tab === 'expired') action = 'getExpiredDeposits';
+                    else if (tab === 'pending') action = 'getBranchPendingTransfers';
+                    else if (tab === 'confirmed') action = 'getBranchConfirmedTransfers';
+
+                    google.script.run
+                        .withSuccessHandler((result) => {
+                            this.loading = false;
+                            if (result.success) {
+                                if (tab === 'expired') this.expiredList = result.data || [];
+                                else if (tab === 'pending') this.pendingList = result.data || [];
+                                else if (tab === 'confirmed') this.confirmedList = result.data || [];
+                            }
+                        })
+                        .withFailureHandler((error) => {
+                            this.loading = false;
+                            console.error('Load tab data error:', error);
+                        })
+                        .handleDepositSystemAPI({ action: action, storeId: storeId });
+                },
+
+                switchTab(tab) {
+                    this.activeTab = tab;
+                    this.loadTabData(tab);
                 },
 
                 toggleSelect(depositId) {
@@ -1310,10 +1371,10 @@
                 },
 
                 selectAll() {
-                    if (this.selectedItems.length === this.transfers.length) {
+                    if (this.selectedItems.length === this.currentList.length) {
                         this.selectedItems = [];
                     } else {
-                        this.selectedItems = this.transfers.map(t => t.deposit_id);
+                        this.selectedItems = this.currentList.map(t => t.deposit_id);
                     }
                 },
 
@@ -1328,9 +1389,29 @@
                 closeTransferModal() {
                     this.showTransferModal = false;
                     this.transferNote = '';
+                    this.createdBy = '';
+                    this.photoPreview = null;
+                    this.photoBase64 = null;
+                },
+
+                handlePhotoUpload(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.photoPreview = e.target.result;
+                        this.photoBase64 = e.target.result.split(',')[1];
+                    };
+                    reader.readAsDataURL(file);
                 },
 
                 submitTransfer() {
+                    if (!this.createdBy.trim()) {
+                        Swal.fire('แจ้งเตือน', 'กรุณาระบุชื่อผู้ส่ง', 'warning');
+                        return;
+                    }
+
                     this.submitting = true;
                     const storeId = Alpine.store('app').user.currentStore;
 
@@ -1341,16 +1422,8 @@
                                 Swal.fire('สำเร็จ', 'ส่งคำขอโอนเรียบร้อยแล้ว', 'success');
                                 this.closeTransferModal();
                                 this.selectedItems = [];
-                                // Reload data
-                                Alpine.store('centralTransfer').loading = true;
-                                google.script.run
-                                    .withSuccessHandler((r) => {
-                                        if (r.success) {
-                                            Alpine.store('centralTransfer').transfers = r.data || [];
-                                        }
-                                        Alpine.store('centralTransfer').loading = false;
-                                    })
-                                    .handleDepositSystemAPI({ action: 'getExpiredDeposits', storeId: storeId });
+                                this.loadSummary();
+                                this.loadTabData(this.activeTab);
                             } else {
                                 Swal.fire('ผิดพลาด', result.message, 'error');
                             }
@@ -1363,7 +1436,9 @@
                             action: 'createTransferRequest',
                             storeId: storeId,
                             depositIds: this.selectedItems,
-                            note: this.transferNote
+                            note: this.transferNote,
+                            createdBy: this.createdBy,
+                            photo: this.photoBase64
                         });
                 }
             };
@@ -8604,91 +8679,183 @@
                 // หน้าสำหรับสาขาปกติ - แสดงรายการหมดอายุพร้อมโอน
                 renderBranchTransferPage() {
                     return `
-        <div class="space-y-6" x-data="branchTransferData()">
-            <div class="bg-white dark:bg-gray-800 rounded-2xl glow-border p-8">
-                <div class="flex items-center justify-between">
+        <div class="space-y-6" x-data="branchTransferData()" x-init="init()">
+            <!-- Header -->
+            <div class="bg-white dark:bg-gray-800 rounded-2xl glow-border p-6">
+                <div class="flex items-center justify-between flex-wrap gap-4">
                     <div class="flex items-center space-x-4">
-                        <div class="bg-green-100 dark:bg-green-900 p-4 rounded-xl">
-                            <i class="fas fa-truck text-4xl text-green-600 dark:text-green-400"></i>
+                        <div class="bg-green-100 dark:bg-green-900 p-3 rounded-xl">
+                            <i class="fas fa-truck text-3xl text-green-600 dark:text-green-400"></i>
                         </div>
                         <div>
-                            <h2 class="text-3xl font-bold mb-1 text-gray-900 dark:text-white">โอนคลังกลาง</h2>
-                            <p class="text-gray-600 dark:text-gray-400">รายการฝากที่หมดอายุ พร้อมส่งโอนไปคลังกลาง</p>
+                            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">โอนคลังกลาง</h2>
+                            <p class="text-gray-600 dark:text-gray-400 text-sm">จัดการรายการฝากที่หมดอายุและติดตามสถานะ</p>
                         </div>
                     </div>
-                    <button x-show="selectedCount > 0" @click="openTransferModal()"
-                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2">
+                    <button x-show="activeTab === 'expired' && selectedCount > 0" @click="openTransferModal()"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2 transition-all">
                         <i class="fas fa-paper-plane"></i>
-                        <span>ส่งโอน (<span x-text="selectedCount"></span> รายการ)</span>
+                        <span>ส่งโอน (<span x-text="selectedCount"></span>)</span>
                     </button>
                 </div>
             </div>
 
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-                <template x-if="loading">
-                    <div class="text-center py-8">
-                        <i class="fas fa-spinner fa-spin text-4xl text-blue-500"></i>
-                        <p class="mt-2 text-gray-600">กำลังโหลดข้อมูล...</p>
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div @click="switchTab('expired')" class="bg-white dark:bg-gray-800 rounded-xl p-4 cursor-pointer transition-all hover:shadow-lg"
+                    :class="activeTab === 'expired' ? 'ring-2 ring-red-500' : ''">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500">หมดอายุ</p>
+                            <p class="text-2xl font-bold text-red-600" x-text="summary.expired || 0"></p>
+                        </div>
+                        <div class="bg-red-100 dark:bg-red-900/30 p-3 rounded-full">
+                            <i class="fas fa-clock text-red-500 text-xl"></i>
+                        </div>
                     </div>
-                </template>
-                <template x-if="!loading && transfers.length === 0">
-                    <div class="text-center py-8">
-                        <i class="fas fa-check-circle text-6xl text-green-500 mb-4"></i>
-                        <h3 class="text-xl font-semibold mb-2">ไม่มีรายการหมดอายุ</h3>
-                        <p class="text-gray-600 dark:text-gray-400">ยังไม่มีรายการฝากที่หมดอายุในขณะนี้</p>
+                </div>
+                <div @click="switchTab('pending')" class="bg-white dark:bg-gray-800 rounded-xl p-4 cursor-pointer transition-all hover:shadow-lg"
+                    :class="activeTab === 'pending' ? 'ring-2 ring-yellow-500' : ''">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500">รอคลังรับ</p>
+                            <p class="text-2xl font-bold text-yellow-600" x-text="summary.pending || 0"></p>
+                        </div>
+                        <div class="bg-yellow-100 dark:bg-yellow-900/30 p-3 rounded-full">
+                            <i class="fas fa-hourglass-half text-yellow-500 text-xl"></i>
+                        </div>
                     </div>
-                </template>
-                <template x-if="!loading && transfers.length > 0">
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead class="bg-gray-50 dark:bg-gray-700">
-                                <tr>
-                                    <th class="px-4 py-3 text-center">
-                                        <input type="checkbox" @click="selectAll()" :checked="selectedItems.length === transfers.length && transfers.length > 0" class="w-4 h-4">
-                                    </th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">รหัส</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ชื่อลูกค้า</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">รายการ</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">วันหมดอายุ</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">สถานะ</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                <template x-for="item in transfers" :key="item.deposit_id">
-                                    <tr :class="isSelected(item.deposit_id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''">
-                                        <td class="px-4 py-3 text-center">
-                                            <input type="checkbox" :checked="isSelected(item.deposit_id)" @click="toggleSelect(item.deposit_id)" class="w-4 h-4">
-                                        </td>
-                                        <td class="px-4 py-3 text-sm" x-text="item.deposit_id"></td>
-                                        <td class="px-4 py-3 text-sm" x-text="item.customer_name"></td>
-                                        <td class="px-4 py-3 text-sm" x-text="item.item_name + ' x' + item.quantity"></td>
-                                        <td class="px-4 py-3 text-sm" x-text="item.expiry_date"></td>
-                                        <td class="px-4 py-3">
-                                            <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">หมดอายุ</span>
-                                        </td>
+                </div>
+                <div @click="switchTab('confirmed')" class="bg-white dark:bg-gray-800 rounded-xl p-4 cursor-pointer transition-all hover:shadow-lg"
+                    :class="activeTab === 'confirmed' ? 'ring-2 ring-green-500' : ''">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500">คลังรับแล้ว</p>
+                            <p class="text-2xl font-bold text-green-600" x-text="summary.confirmed || 0"></p>
+                        </div>
+                        <div class="bg-green-100 dark:bg-green-900/30 p-3 rounded-full">
+                            <i class="fas fa-check-circle text-green-500 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+                <div class="border-b border-gray-200 dark:border-gray-700">
+                    <nav class="flex -mb-px">
+                        <button @click="switchTab('expired')" class="py-3 px-4 text-sm font-medium border-b-2 transition-all"
+                            :class="activeTab === 'expired' ? 'border-red-500 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
+                            <i class="fas fa-clock mr-1"></i> หมดอายุ
+                        </button>
+                        <button @click="switchTab('pending')" class="py-3 px-4 text-sm font-medium border-b-2 transition-all"
+                            :class="activeTab === 'pending' ? 'border-yellow-500 text-yellow-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
+                            <i class="fas fa-hourglass-half mr-1"></i> รอคลังรับ
+                        </button>
+                        <button @click="switchTab('confirmed')" class="py-3 px-4 text-sm font-medium border-b-2 transition-all"
+                            :class="activeTab === 'confirmed' ? 'border-green-500 text-green-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
+                            <i class="fas fa-check-circle mr-1"></i> รับแล้ว
+                        </button>
+                    </nav>
+                </div>
+
+                <div class="p-4">
+                    <template x-if="loading">
+                        <div class="text-center py-8">
+                            <i class="fas fa-spinner fa-spin text-4xl text-blue-500"></i>
+                            <p class="mt-2 text-gray-600">กำลังโหลดข้อมูล...</p>
+                        </div>
+                    </template>
+                    <template x-if="!loading && currentList.length === 0">
+                        <div class="text-center py-8">
+                            <i class="fas fa-inbox text-5xl text-gray-300 mb-4"></i>
+                            <h3 class="text-lg font-semibold text-gray-500">ไม่มีรายการ</h3>
+                        </div>
+                    </template>
+                    <template x-if="!loading && currentList.length > 0">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                <thead class="bg-gray-50 dark:bg-gray-700">
+                                    <tr>
+                                        <th x-show="activeTab === 'expired'" class="px-3 py-3 text-center w-10">
+                                            <input type="checkbox" @click="selectAll()" :checked="selectedItems.length === currentList.length && currentList.length > 0" class="w-4 h-4">
+                                        </th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">รหัส</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">ลูกค้า</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">รายการ</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase">วันหมดอายุ</th>
+                                        <th class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase">สถานะ</th>
                                     </tr>
-                                </template>
-                            </tbody>
-                        </table>
-                    </div>
-                </template>
+                                </thead>
+                                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                    <template x-for="item in currentList" :key="item.deposit_id">
+                                        <tr :class="isSelected(item.deposit_id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''">
+                                            <td x-show="activeTab === 'expired'" class="px-3 py-3 text-center">
+                                                <input type="checkbox" :checked="isSelected(item.deposit_id)" @click="toggleSelect(item.deposit_id)" class="w-4 h-4">
+                                            </td>
+                                            <td class="px-3 py-3 text-xs font-mono" x-text="item.deposit_id"></td>
+                                            <td class="px-3 py-3 text-sm" x-text="item.customer_name"></td>
+                                            <td class="px-3 py-3 text-sm hidden sm:table-cell" x-text="item.item_name + ' x' + item.quantity"></td>
+                                            <td class="px-3 py-3 text-xs" x-text="formatDate(item.expiry_date)"></td>
+                                            <td class="px-3 py-3 text-center">
+                                                <span x-show="activeTab === 'expired'" class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">หมดอายุ</span>
+                                                <span x-show="activeTab === 'pending'" class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">รอรับ</span>
+                                                <span x-show="activeTab === 'confirmed'" class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">รับแล้ว</span>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </template>
+                </div>
             </div>
 
             <!-- Transfer Modal -->
-            <div x-show="showTransferModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" x-cloak>
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
-                    <h3 class="text-xl font-bold mb-4">ยืนยันการส่งโอน</h3>
-                    <p class="mb-4 text-gray-600 dark:text-gray-400">คุณกำลังจะส่งโอน <span class="font-bold text-blue-600" x-text="selectedCount"></span> รายการไปยังคลังกลาง</p>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium mb-2">หมายเหตุ (ถ้ามี)</label>
-                        <textarea x-model="transferNote" rows="3" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600" placeholder="ระบุหมายเหตุ..."></textarea>
-                    </div>
-                    <div class="flex space-x-3">
-                        <button @click="closeTransferModal()" class="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">ยกเลิก</button>
-                        <button @click="submitTransfer()" :disabled="submitting" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                            <span x-show="!submitting">ยืนยันส่งโอน</span>
-                            <span x-show="submitting"><i class="fas fa-spinner fa-spin"></i> กำลังส่ง...</span>
-                        </button>
+            <div x-show="showTransferModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" x-cloak>
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+                    <div class="p-6">
+                        <h3 class="text-xl font-bold mb-4 text-gray-900 dark:text-white">ยืนยันการส่งโอน</h3>
+                        <p class="mb-4 text-gray-600 dark:text-gray-400">ส่งโอน <span class="font-bold text-blue-600" x-text="selectedCount"></span> รายการไปคลังกลาง</p>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">ชื่อผู้ส่ง <span class="text-red-500">*</span></label>
+                            <input type="text" x-model="createdBy" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500" placeholder="ระบุชื่อผู้ส่ง...">
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">หมายเหตุ</label>
+                            <textarea x-model="transferNote" rows="2" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500" placeholder="ระบุหมายเหตุ (ถ้ามี)..."></textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">รูปถ่าย (ถ้ามี)</label>
+                            <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center">
+                                <template x-if="!photoPreview">
+                                    <label class="cursor-pointer">
+                                        <i class="fas fa-camera text-3xl text-gray-400 mb-2"></i>
+                                        <p class="text-sm text-gray-500">คลิกเพื่อถ่ายรูป/เลือกรูป</p>
+                                        <input type="file" accept="image/*" capture="environment" @change="handlePhotoUpload($event)" class="hidden">
+                                    </label>
+                                </template>
+                                <template x-if="photoPreview">
+                                    <div class="relative">
+                                        <img :src="photoPreview" class="max-h-40 mx-auto rounded-lg">
+                                        <button @click="photoPreview = null; photoBase64 = null" class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 -mt-2 -mr-2">
+                                            <i class="fas fa-times text-xs"></i>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="flex space-x-3">
+                            <button @click="closeTransferModal()" class="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">ยกเลิก</button>
+                            <button @click="submitTransfer()" :disabled="submitting" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-all">
+                                <span x-show="!submitting">ยืนยันส่งโอน</span>
+                                <span x-show="submitting"><i class="fas fa-spinner fa-spin"></i> กำลังส่ง...</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
