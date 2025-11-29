@@ -1469,18 +1469,13 @@
                 confirmNote: '',
                 processing: false,
                 loading: false,
-                summary: { pending: 0, confirmed: 0, awaiting: 0 },
+                summary: { pending: 0, confirmed: 0 },
                 pendingList: [],
                 confirmedList: [],
-                awaitingList: [],
-                showWithdrawModal: false,
-                selectedDeposit: null,
-                withdrawNote: '',
 
                 get currentList() {
                     if (this.activeTab === 'pending') return this.pendingList;
                     if (this.activeTab === 'confirmed') return this.confirmedList;
-                    if (this.activeTab === 'awaiting') return this.awaitingList;
                     return [];
                 },
 
@@ -1513,14 +1508,12 @@
                     let action = '';
                     if (tab === 'pending') action = 'getHQPendingTransfers';
                     else if (tab === 'confirmed') action = 'getHQConfirmedTransfers';
-                    else if (tab === 'awaiting') action = 'getHQAwaitingWithdrawals';
 
                     google.script.run
                         .withSuccessHandler((result) => {
                             if (result.success) {
                                 if (tab === 'pending') this.pendingList = result.data || [];
                                 else if (tab === 'confirmed') this.confirmedList = result.data || [];
-                                else if (tab === 'awaiting') this.awaitingList = result.data || [];
                             }
                             this.loading = false;
                         })
@@ -1609,44 +1602,6 @@
                                 });
                         }
                     });
-                },
-
-                openWithdrawModal(deposit) {
-                    this.selectedDeposit = deposit;
-                    this.withdrawNote = '';
-                    this.showWithdrawModal = true;
-                },
-
-                closeWithdrawModal() {
-                    this.showWithdrawModal = false;
-                    this.selectedDeposit = null;
-                    this.withdrawNote = '';
-                },
-
-                confirmWithdraw() {
-                    if (!this.selectedDeposit) return;
-                    this.processing = true;
-
-                    google.script.run
-                        .withSuccessHandler((result) => {
-                            this.processing = false;
-                            if (result.success) {
-                                Swal.fire('สำเร็จ', 'บันทึกการถอนเรียบร้อยแล้ว', 'success');
-                                this.closeWithdrawModal();
-                                this.reloadData();
-                            } else {
-                                Swal.fire('ผิดพลาด', result.message, 'error');
-                            }
-                        })
-                        .withFailureHandler((error) => {
-                            this.processing = false;
-                            Swal.fire('ผิดพลาด', error.message, 'error');
-                        })
-                        .handleDepositSystemAPI({
-                            action: 'confirmWithdrawal',
-                            depositId: this.selectedDeposit.deposit_id,
-                            note: this.withdrawNote
-                        });
                 },
 
                 reloadData() {
@@ -9042,7 +8997,7 @@
             </div>
 
             <!-- Summary Cards -->
-            <div class="grid grid-cols-3 gap-4">
+            <div class="grid grid-cols-2 gap-4">
                 <div @click="switchTab('pending')" class="cursor-pointer bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-2 transition-all" :class="activeTab === 'pending' ? 'border-yellow-500' : 'border-transparent hover:border-gray-300'">
                     <div class="flex items-center justify-between">
                         <div>
@@ -9052,19 +9007,10 @@
                         <i class="fas fa-clock text-3xl text-yellow-500"></i>
                     </div>
                 </div>
-                <div @click="switchTab('awaiting')" class="cursor-pointer bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-2 transition-all" :class="activeTab === 'awaiting' ? 'border-purple-500' : 'border-transparent hover:border-gray-300'">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">รอถอน</p>
-                            <p class="text-2xl font-bold text-purple-600" x-text="summary.awaiting"></p>
-                        </div>
-                        <i class="fas fa-hand-holding text-3xl text-purple-500"></i>
-                    </div>
-                </div>
                 <div @click="switchTab('confirmed')" class="cursor-pointer bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-2 transition-all" :class="activeTab === 'confirmed' ? 'border-green-500' : 'border-transparent hover:border-gray-300'">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">ถอนแล้ว</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">รับแล้ว</p>
                             <p class="text-2xl font-bold text-green-600" x-text="summary.confirmed"></p>
                         </div>
                         <i class="fas fa-check-circle text-3xl text-green-500"></i>
@@ -9077,11 +9023,8 @@
                 <button @click="switchTab('pending')" class="px-4 py-2 font-medium transition-colors" :class="activeTab === 'pending' ? 'text-yellow-600 border-b-2 border-yellow-600' : 'text-gray-500 hover:text-gray-700'">
                     <i class="fas fa-clock mr-2"></i>รอรับ
                 </button>
-                <button @click="switchTab('awaiting')" class="px-4 py-2 font-medium transition-colors" :class="activeTab === 'awaiting' ? 'text-purple-600 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'">
-                    <i class="fas fa-hand-holding mr-2"></i>รอถอน
-                </button>
                 <button @click="switchTab('confirmed')" class="px-4 py-2 font-medium transition-colors" :class="activeTab === 'confirmed' ? 'text-green-600 border-b-2 border-green-600' : 'text-gray-500 hover:text-gray-700'">
-                    <i class="fas fa-check-circle mr-2"></i>ถอนแล้ว
+                    <i class="fas fa-check-circle mr-2"></i>รับแล้ว
                 </button>
             </div>
 
@@ -9095,12 +9038,11 @@
                 <template x-if="!loading && currentList.length === 0">
                     <div class="text-center py-8">
                         <i class="fas fa-inbox text-6xl text-gray-400 mb-4"></i>
-                        <h3 class="text-xl font-semibold mb-2" x-text="activeTab === 'pending' ? 'ไม่มีรายการรอรับ' : (activeTab === 'awaiting' ? 'ไม่มีรายการรอถอน' : 'ไม่มีรายการที่ถอนแล้ว')"></h3>
+                        <h3 class="text-xl font-semibold mb-2" x-text="activeTab === 'pending' ? 'ไม่มีรายการรอรับ' : 'ไม่มีรายการที่รับแล้ว'"></h3>
+                        <p class="text-gray-600 dark:text-gray-400" x-text="activeTab === 'pending' ? 'ยังไม่มีรายการที่รอรับจากสาขาอื่นในขณะนี้' : 'ยังไม่มีรายการที่รับแล้ว'"></p>
                     </div>
                 </template>
-
-                <!-- Table for pending/confirmed (Transfers) -->
-                <template x-if="!loading && currentList.length > 0 && (activeTab === 'pending' || activeTab === 'confirmed')">
+                <template x-if="!loading && currentList.length > 0">
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-700">
@@ -9110,7 +9052,8 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">รายการ</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">วันที่ส่ง</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap" x-show="activeTab === 'confirmed'">วันที่รับ</th>
-                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase whitespace-nowrap">จัดการ</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase whitespace-nowrap" x-show="activeTab === 'pending'">จัดการ</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase whitespace-nowrap" x-show="activeTab === 'confirmed'">สถานะ</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -9138,40 +9081,6 @@
                                         <td class="px-4 py-3 text-center whitespace-nowrap" x-show="activeTab === 'confirmed'">
                                             <button @click="openDetailModal(item)" class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 mr-1">
                                                 <i class="fas fa-eye"></i> ดู
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
-                    </div>
-                </template>
-
-                <!-- Table for awaiting (Deposits) -->
-                <template x-if="!loading && currentList.length > 0 && activeTab === 'awaiting'">
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                            <thead class="bg-gray-50 dark:bg-gray-700">
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">รหัสฝาก</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">ลูกค้า</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">สินค้า</th>
-                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase whitespace-nowrap">คงเหลือ</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">จากสาขา</th>
-                                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase whitespace-nowrap">จัดการ</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                <template x-for="item in currentList" :key="item.deposit_id">
-                                    <tr>
-                                        <td class="px-4 py-3 text-sm font-mono whitespace-nowrap" x-text="item.deposit_code"></td>
-                                        <td class="px-4 py-3 text-sm whitespace-nowrap" x-text="item.customer_name"></td>
-                                        <td class="px-4 py-3 text-sm whitespace-nowrap" x-text="item.item_name"></td>
-                                        <td class="px-4 py-3 text-sm text-center whitespace-nowrap" x-text="item.quantity + ' ขวด'"></td>
-                                        <td class="px-4 py-3 text-sm whitespace-nowrap" x-text="item.from_store_name || '-'"></td>
-                                        <td class="px-4 py-3 text-center whitespace-nowrap">
-                                            <button @click="openWithdrawModal(item)" class="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">
-                                                <i class="fas fa-hand-holding mr-1"></i> ถอน
                                             </button>
                                         </td>
                                     </tr>
@@ -9282,45 +9191,6 @@
                                 <i class="fas fa-check mr-2"></i>รับโอน
                             </button>
                         </template>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Withdraw Modal -->
-            <div x-show="showWithdrawModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" x-cloak>
-                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
-                    <h3 class="text-xl font-bold mb-4"><i class="fas fa-hand-holding text-purple-500 mr-2"></i>ยืนยันการถอน</h3>
-
-                    <div class="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-4 mb-4 space-y-2">
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">รหัสฝาก:</span>
-                            <span class="font-mono font-bold" x-text="selectedDeposit?.deposit_code"></span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">ลูกค้า:</span>
-                            <span class="font-bold" x-text="selectedDeposit?.customer_name"></span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">สินค้า:</span>
-                            <span x-text="selectedDeposit?.item_name"></span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">จำนวนถอน:</span>
-                            <span class="font-bold text-purple-600" x-text="selectedDeposit?.quantity + ' ขวด'"></span>
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium mb-2">หมายเหตุ (ถ้ามี)</label>
-                        <textarea x-model="withdrawNote" rows="2" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600" placeholder="ระบุหมายเหตุ..."></textarea>
-                    </div>
-
-                    <div class="flex space-x-3">
-                        <button @click="closeWithdrawModal()" class="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">ยกเลิก</button>
-                        <button @click="confirmWithdraw()" :disabled="processing" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50">
-                            <span x-show="!processing"><i class="fas fa-check mr-1"></i> ยืนยันถอน</span>
-                            <span x-show="processing"><i class="fas fa-spinner fa-spin"></i> กำลังดำเนินการ...</span>
-                        </button>
                     </div>
                 </div>
             </div>
