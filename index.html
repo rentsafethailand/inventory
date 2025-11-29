@@ -8676,7 +8676,7 @@
                 // หน้าสำหรับสาขาปกติ - แสดงรายการหมดอายุพร้อมโอน
                 renderBranchTransferPage() {
                     return `
-        <div class="space-y-6" x-data="branchTransferData()">
+        <div class="space-y-6" x-data="branchTransferData()" x-init="init()">
             <div class="bg-white dark:bg-gray-800 rounded-2xl glow-border p-8">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-4">
@@ -8703,20 +8703,20 @@
                         <p class="mt-2 text-gray-600">กำลังโหลดข้อมูล...</p>
                     </div>
                 </template>
-                <template x-if="!loading && transfers.length === 0">
+                <template x-if="!loading && currentList.length === 0">
                     <div class="text-center py-8">
                         <i class="fas fa-check-circle text-6xl text-green-500 mb-4"></i>
                         <h3 class="text-xl font-semibold mb-2">ไม่มีรายการหมดอายุ</h3>
                         <p class="text-gray-600 dark:text-gray-400">ยังไม่มีรายการฝากที่หมดอายุในขณะนี้</p>
                     </div>
                 </template>
-                <template x-if="!loading && transfers.length > 0">
+                <template x-if="!loading && currentList.length > 0">
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-700">
                                 <tr>
                                     <th class="px-4 py-3 text-center">
-                                        <input type="checkbox" @click="selectAll()" :checked="selectedItems.length === transfers.length && transfers.length > 0" class="w-4 h-4">
+                                        <input type="checkbox" @click="selectAll()" :checked="selectedItems.length === currentList.length && currentList.length > 0" class="w-4 h-4">
                                     </th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">รหัส</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ชื่อลูกค้า</th>
@@ -8726,7 +8726,7 @@
                                 </tr>
                             </thead>
                             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                <template x-for="item in transfers" :key="item.deposit_id">
+                                <template x-for="item in currentList" :key="item.deposit_id">
                                     <tr :class="isSelected(item.deposit_id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''">
                                         <td class="px-4 py-3 text-center">
                                             <input type="checkbox" :checked="isSelected(item.deposit_id)" @click="toggleSelect(item.deposit_id)" class="w-4 h-4">
